@@ -26,13 +26,6 @@ export async function POST(req: Request) {
 
     if (!resend) {
       // Mock mode if no RESEND_API_KEY
-      console.log(`\n========================================`);
-      console.log(`[MOCK EMAIL SENT TO ${clientEmail}]`);
-      console.log(`Link: ${paymentLink}`);
-      console.log(`PDF size: ${pdfBase64?.length} bytes`);
-      console.log(`Set RESEND_API_KEY in .env.local to send real emails.`);
-      console.log(`========================================\n`);
-      
       // Simulate network delay
       await new Promise(resolve => setTimeout(resolve, 1500));
       return NextResponse.json({ success: true, mocked: true });

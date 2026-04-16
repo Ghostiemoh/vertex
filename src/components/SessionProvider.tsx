@@ -71,6 +71,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     let active = true;
 
     const initSession = async () => {
+      if (!supabase) return;
       try {
         const { data } = await supabase.auth.getSession();
         if (!active) return;
