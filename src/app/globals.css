@@ -1,0 +1,175 @@
+@import "tailwindcss";
+
+:root {
+  --background: oklch(0.98 0 0);
+  --foreground: oklch(0.15 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0 0);
+  --primary: oklch(0.55 0.16 176);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.94 0.01 176);
+  --secondary-foreground: oklch(0.15 0 0);
+  --muted: oklch(0.95 0.01 176);
+  --muted-foreground: oklch(0.45 0.02 176);
+  --accent: oklch(0.92 0.02 176);
+  --accent-foreground: oklch(0.15 0 0);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.90 0.01 176);
+  --input: oklch(0.96 0.01 176);
+  --ring: oklch(0.55 0.16 176);
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: oklch(0.13 0 0);
+  --foreground: oklch(0.97 0 0);
+  --card: oklch(0.18 0 0);
+  --card-foreground: oklch(0.97 0 0);
+  --popover: oklch(0.20 0.01 176);
+  --popover-foreground: oklch(0.97 0 0);
+  --primary: oklch(0.79 0.16 176);
+  --primary-foreground: oklch(0.10 0 0);
+  --secondary: oklch(0.22 0.02 176);
+  --secondary-foreground: oklch(0.97 0 0);
+  --muted: oklch(0.20 0.01 176);
+  --muted-foreground: oklch(0.65 0.02 176);
+  --accent: oklch(0.24 0.03 176);
+  --accent-foreground: oklch(0.97 0 0);
+  --destructive: oklch(0.65 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.25 0.02 176);
+  --input: oklch(0.18 0 0);
+  --ring: oklch(0.79 0.16 176);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from { height: 0; }
+    to { height: var(--radix-accordion-content-height); }
+  }
+  @keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height); }
+    to { height: 0; }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/20;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* High-Velocity Scrollbar */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-primary/20 rounded-full hover:bg-primary/40 transition-colors;
+  }
+}
+
+/* Vertex Design Engineering Utilities */
+@layer utilities {
+  .bezel-double {
+    position: relative;
+    box-shadow: 0 0 0 1px oklch(100% 0 0 / 5%), 
+                0 0 0 2px oklch(0% 0 0 / 20%), 
+                0 4px 12px -2px oklch(0% 0 0 / 40%);
+  }
+
+  .architect-surface {
+    @apply bg-background relative overflow-hidden;
+    will-change: transform;
+    transform: translateZ(0);
+  }
+
+  .architect-grid-pattern {
+    background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0);
+    background-size: 32px 32px;
+  }
+
+  .precision-glass, .liquid-glass {
+    @apply bg-background/40 border-t border-white/10 border-x border-white/5;
+    -webkit-backdrop-filter: blur(8px) saturate(150%);
+    backdrop-filter: blur(8px) saturate(150%);
+    box-shadow: 0 4px 24px -1px oklch(0% 0 0 / 40%);
+    will-change: transform;
+    transform: translateZ(0);
+  }
+
+  .glass-dark {
+    @apply bg-card/40 border border-white/5;
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    will-change: transform;
+    transform: translateZ(0);
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-white/30;
+  }
+
+  .text-primary-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-br from-primary via-primary to-primary-foreground;
+  }
+
+  /* Wallet Adapter Overrides - Kill the Purple */
+  .wallet-adapter-button {
+    @apply !bg-primary !text-black !font-bold !text-xs !uppercase !tracking-widest !rounded-xl !h-12 !px-6 !transition-all duration-300 hover:!scale-105 active:!scale-95 shadow-xl shadow-primary/20 !border-none cursor-pointer !flex !items-center !justify-center !gap-2 !font-sans;
+  }
+
+  .wallet-adapter-button-trigger {
+    @apply !bg-primary !text-black;
+  }
+
+  .wallet-adapter-modal-wrapper {
+    @apply !bg-background !border !border-white/10 !rounded-3xl !shadow-2xl;
+  }
+
+  .wallet-adapter-modal-button-close {
+    @apply !bg-white/5 hover:!bg-white/10 !transition-colors;
+  }
+
+  .vertex-btn {
+    @apply px-8 py-4 bg-primary text-black font-bold text-xs uppercase tracking-widest rounded-xl shadow-2xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 cursor-pointer min-h-[48px];
+  }
+
+  .vertex-btn-outline {
+    @apply px-8 py-4 bg-white/5 border border-white/10 text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-white/10 transition-all flex items-center justify-center gap-3 cursor-pointer min-h-[48px];
+  }
+}
