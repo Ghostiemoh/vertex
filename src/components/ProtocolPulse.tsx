@@ -16,20 +16,19 @@ export function ProtocolPulse() {
   const [lastUpdate, setLastUpdate] = useState(0);
 
   useEffect(() => {
-    const pythClient = new PythHttpClient(
-      connection,
-      getPythProgramKeyForCluster(VERTEX_NETWORK)
-    );
-
     const updateStats = async () => {
       try {
         const start = performance.now();
-        const data = await pythClient.getData();
-        const solPrice = data.productPrice.get("Crypto.SOL/USD");
-
-        if (solPrice?.price) {
-          setPrice(solPrice.price);
-          setLastUpdate(Date.now());
+        
+        // Fetch price from our internal proxy (Jupiter V3)
+        const priceRes = await fetch("/api/prices");
+        if (priceRes.ok) {
+          const priceData = await priceRes.json();
+          const solPrice = priceData?.["So11111111111111111111111111111111111111112"]?.usdPrice;
+          if (solPrice) {
+            setPrice(Number(solPrice));
+            setLastUpdate(Date.now());
+          }
         }
 
         const currentSlot = await connection.getSlot();
