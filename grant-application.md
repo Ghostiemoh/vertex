@@ -13,10 +13,13 @@
 > High-performance crypto invoicing and surgical settlement for the Solana freelance economy.
 
 **TG username**
-> [INSERT_TG_LINK_HERE] (Format: t.me/username)
+> t.me/Ghostiemoh
 
 **Wallet Address**
-> [INSERT_SOLANA_WALLET_ADDRESS_HERE]
+> GHCRJFhmVV8ZU1hhUbd6vEeiMbLMMrwrCfaabecYsHvq
+
+**Personal X Profile**
+> x.com/Ghostieemoh
 
 ---
 
@@ -28,7 +31,7 @@
 > By leveraging the speed and low cost of the Solana Virtual Machine (SVM) alongside a robust Supabase settlement backend, Vertex ensures that every transaction occurs at the exact intersection of project agreement and financial execution. It is designed for precision, institutional-grade trust, and high-agency independent work.
 
 **Deadline**
-> [INSERT_SHIPPING_DEADLINE_HERE] (Timezone: Asia/Calcutta)
+> 4th May, 2026 (Timezone: Asia/Calcutta)
 
 **Proof of Work**
 > - **Live Application**: [https://vertex-pay.vercel.app](https://vertex-pay.vercel.app)
@@ -37,15 +40,12 @@
 > - **Cinematic Marketing Asset**: [VertexAd.tsx](file:///c:/Users/Muhammad/Documents/AntiGravity/marketing-video/src/compositions/VertexAd.tsx) - A 60-second high-agency advertisement created using Remotion, featuring automated voiceovers and precision motion graphics.
 > - **Technical Foundation**: Next.js 16 application with integrated Solana wallet adapters and server-side signature verification via Supabase.
 
-**Personal X Profile**
-> [INSERT_X_HANDLE_HERE] (Format: x.com/handle)
 
 **Personal GitHub Profile**
 > [https://github.com/Ghostiemoh](https://github.com/Ghostiemoh)
 
 **Colosseum Crowdedness Score**
-> [INSERT_COLOSSEUM_SCREENSHOT_LINK_HERE]
-> *Note: Please visit [colosseum.com/copilot](https://colosseum.com/copilot) to get your score and upload a screenshot.*
+> [https://drive.google.com/file/d/1Gx4fG6GnfrfBF2JugT5xgT8156_x50iU/view?usp=sharing](https://drive.google.com/file/d/1Gx4fG6GnfrfBF2JugT5xgT8156_x50iU/view?usp=sharing)
 
 **AI Session Transcript**
 > You must attach the current AI session log to your application.
@@ -57,16 +57,16 @@
 
 **Goals and Milestones**
 
-1. **Devnet Launch & Core Flow (Date: [INSERT_DATE_1])**
+1. **Devnet Launch & Core Flow (Date: April 20, 2026)**
    - Finalize the wallet-signed agreement drafting system.
    - Complete the Devnet invoicing flow with SOL/USDC support.
-2. **Marketing & Onboarding Assets (Date: [INSERT_DATE_2])**
+2. **Marketing & Onboarding Assets (Date: April 25, 2026)**
    - Export and release the cinematic Vertex advertisement.
    - Launch public documentation for freelance agencies.
-3. **Production Mainnet Deployment (Date: [INSERT_DATE_3])**
+3. **Production Mainnet Deployment (Date: April 30, 2026)**
    - Full migration to Solana Mainnet with institutional RPC endpoints.
    - Enable multi-token settlement (SOL, USDC, USDT).
-4. **Post-Launch Growth & Final Tranche (Date: [INSERT_DATE_4])**
+4. **Post-Launch Growth & Final Tranche (Date: May 4, 2026)**
    - Achieve initial KPI of 10+ active freelancers using Vertex for billing.
    - Submission of Colosseum project link and final AI subscription receipt.
 
@@ -80,5 +80,4 @@
 
 ### Instructions for Submission
 1. Copy the values above into the form at [Solana Earn](https://superteam.fun/earn/grants/agentic-engineering).
-2. Ensure you replace all `[INSERT_...]` placeholders with your actual details.
-3. Attach the `claude-session.jsonl` file found in your project directory as proof of AI-assisted development.
+2. Attach the `claude-session.jsonl` file found in your project directory (or export your own session log) as proof of AI-assisted development.

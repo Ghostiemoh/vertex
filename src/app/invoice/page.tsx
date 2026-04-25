@@ -10,10 +10,12 @@ import { encodePaymentRequest, type PaymentToken } from "@/lib/payment-utils";
 import { getOrigin } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/Toast";
+import QRCode from "qrcode";
 
 interface InvoiceItem {
   id: string;
   description: string;
+  period: string;
   qty: number;
   rate: number;
 }
@@ -30,6 +32,7 @@ export default function InvoicePage() {
   const [vendorName, setVendorName] = useState("");
   const [vendorEmail, setVendorEmail] = useState("");
   const [vendorAddress, setVendorAddress] = useState("");
+  const [vendorPhone, setVendorPhone] = useState("");
   const [taxId, setTaxId] = useState("");
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
@@ -37,7 +40,7 @@ export default function InvoicePage() {
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
-  const [items, setItems] = useState<InvoiceItem[]>([{ id: "1", description: "", qty: 1, rate: 0 }]);
+  const [items, setItems] = useState<InvoiceItem[]>([{ id: "1", description: "", period: "", qty: 1, rate: 0 }]);
   const [token, setToken] = useState<PaymentToken>("SOL");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -46,6 +49,7 @@ export default function InvoicePage() {
   const [solPrice, setSolPrice] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
   const [currentDate, setCurrentDate] = useState("");
+  const [previewQr, setPreviewQr] = useState("");
 
   useEffect(() => {
     setInvoiceNumber(`INV-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`);
@@ -57,7 +61,7 @@ export default function InvoicePage() {
         const res = await fetch("/api/prices");
         if (!res.ok) return;
         const data = await res.json();
-        const price = data?.data?.["So11111111111111111111111111111111111111112"]?.price;
+        const price = data?.["So11111111111111111111111111111111111111112"]?.usdPrice;
         if (price) setSolPrice(Number(price));
       } catch {
         // Price fetch is non-critical
@@ -74,8 +78,23 @@ export default function InvoicePage() {
   })();
   const effectiveWallet = connected ? publicKey?.toBase58() : manualWallet;
 
+  useEffect(() => {
+    if (mounted && effectiveWallet) {
+      const link = `${getOrigin()}/pay/${encodePaymentRequest({
+        recipient: effectiveWallet,
+        amount: total > 0 ? (isMilestone ? total / 2 : total) : 0,
+        token,
+        description: `Invoice ${invoiceNumber}`,
+        memo: `Vertex-INV:${invoiceNumber}`,
+      })}`;
+      QRCode.toDataURL(link, { margin: 1, width: 200, color: { dark: "#000000", light: "#ffffff" } })
+        .then(setPreviewQr)
+        .catch(() => setPreviewQr(""));
+    }
+  }, [mounted, effectiveWallet, total, token, invoiceNumber, isMilestone]);
+
   const addItem = () => {
-    setItems([...items, { id: Math.random().toString(36).slice(2), description: "", qty: 1, rate: 0 }]);
+    setItems([...items, { id: Math.random().toString(36).slice(2), description: "", period: "", qty: 1, rate: 0 }]);
   };
 
   const removeItem = (id: string) => {
@@ -113,197 +132,210 @@ export default function InvoicePage() {
       memo: `Vertex-INV:${invoiceNumber}|To:${clientName}|Sum:${paymentAmount} ${token}${isMilestone ? '|Milestone' : ''}`,
     });
     const paymentLink = `${getOrigin()}/pay/${encoded}`;
+    const qrDataUrl = await QRCode.toDataURL(paymentLink, { margin: 1, width: 300 });
 
     const doc = new jsPDF() as jsPDF & { lastAutoTable: { finalY: number } };
     const pageWidth = 210;
     const margin = 20;
     const contentWidth = pageWidth - margin * 2;
 
-    const accent: [number, number, number] = [121, 241, 241];
-    const darkText: [number, number, number] = [10, 10, 10];
-    const mutedText: [number, number, number] = [120, 120, 120];
-    const lightGray: [number, number, number] = [240, 240, 240];
-    const altRowBg: [number, number, number] = [252, 252, 252];
+    // Professional Colors
+    const black: [number, number, number] = [0, 0, 0];
+    const darkGray: [number, number, number] = [60, 60, 60];
+    const lightGray: [number, number, number] = [150, 150, 150];
+    const lineGray: [number, number, number] = [230, 230, 230];
 
-    /* ── Header ── */
+    let cursorY = 25;
+
+    /* ── HEADER ── */
+    doc.setFont("times", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(...black);
+    doc.text((vendorName || "MUHAMMAD AUWAL ABDULAZIZ").toUpperCase(), margin, cursorY);
+    cursorY += 8;
+
+    doc.setFont("times", "normal");
     doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...accent);
-    doc.text("Vertex", margin, 22);
-    doc.setFontSize(7);
+    doc.setTextColor(...darkGray);
+    const headerInfo = [];
+    if (vendorAddress) headerInfo.push(`Address: ${vendorAddress.replace(/\n/g, ", ")}`);
+    if (vendorPhone) headerInfo.push(`Phone number: ${vendorPhone}`);
+    if (vendorEmail) headerInfo.push(`Mail: ${vendorEmail}`);
+    
+    const headerStr = headerInfo.join(" | ");
+    const headerLines = doc.splitTextToSize(headerStr, contentWidth);
+    doc.text(headerLines, margin, cursorY);
+    cursorY += headerLines.length * 4 + 4;
+
+    // Divider
+    doc.setDrawColor(...lineGray);
+    doc.line(margin, cursorY, pageWidth - margin, cursorY);
+    cursorY += 10;
+
+    /* ── TITLE ── */
+    doc.setFontSize(26);
+    doc.setFont("times", "bold");
+    doc.setTextColor(...black);
+    doc.text("INVOICE", margin, cursorY);
+    cursorY += 15;
+
+    /* ── META INFO (From/To) ── */
+    doc.setFontSize(11);
+    doc.setFont("times", "bold");
+    doc.text("From:", margin, cursorY);
+    doc.text("To:", margin + 95, cursorY);
+    cursorY += 5;
+
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(...mutedText);
-    doc.text("Global Liquidity Settlement", margin, 27);
+    doc.setTextColor(...darkGray);
+    const fromText = doc.splitTextToSize(vendorName || "—", 80);
+    const toText = doc.splitTextToSize(clientName || "—", 80);
+    
+    const maxLines = Math.max(fromText.length, toText.length);
+    doc.text(fromText, margin, cursorY);
+    doc.text(toText, margin + 95, cursorY);
+    cursorY += maxLines * 5 + 12;
 
-    doc.setFontSize(28);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...darkText);
-    doc.text("INVOICE", pageWidth - margin, 22, { align: "right" });
-
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...mutedText);
-    doc.text(`#${invoiceNumber}`, pageWidth - margin, 29, { align: "right" });
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, pageWidth - margin, 34, { align: "right" });
-    if (dueDate) doc.text(`Due: ${new Date(dueDate).toLocaleDateString()}`, pageWidth - margin, 39, { align: "right" });
-
-    doc.setDrawColor(...lightGray);
-    doc.setLineWidth(0.5);
-    doc.line(margin, 45, pageWidth - margin, 45);
-
-    /* ── From / Bill To ── */
-    const infoY = 54;
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...mutedText);
-    doc.text("FROM", margin, infoY);
-
+    // Invoice Details (Number/Date)
     doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...darkText);
-    doc.text(vendorName || "Your Business", margin, infoY + 6);
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...mutedText);
-    if (vendorEmail) doc.text(vendorEmail, margin, infoY + 11);
-    const vendorAddrLines = doc.splitTextToSize(vendorAddress || "", 70);
-    doc.text(vendorAddrLines, margin, infoY + (vendorEmail ? 16 : 11));
-    if (taxId) doc.text(`Tax ID: ${taxId}`, margin, infoY + (vendorEmail ? 16 : 11) + vendorAddrLines.length * 4 + 2);
+    doc.setFont("times", "bold");
+    doc.setTextColor(...black);
+    doc.text(`Invoice Number: ${invoiceNumber}`, margin, cursorY);
+    doc.text(`Invoice Date: ${currentDate}`, margin + 95, cursorY);
+    cursorY += 5;
+    doc.text(`Due Date: ${dueDate} (${Math.ceil((new Date(dueDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24))} days from invoice date)`, margin, cursorY);
+    cursorY += 12;
 
-    const billX = 120;
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...mutedText);
-    doc.text("BILL TO", billX, infoY);
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...darkText);
-    doc.text(clientName || "Client Name", billX, infoY + 6);
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...mutedText);
-    if (clientEmail) doc.text(clientEmail, billX, infoY + 11);
-    const clientAddrLines = doc.splitTextToSize(clientAddress || "", 70);
-    doc.text(clientAddrLines, billX, infoY + (clientEmail ? 16 : 11));
-
-    /* ── Line Items Table ── */
+    /* ── ITEMS TABLE ── */
     autoTable(doc, {
-      startY: 95,
-      head: [["Description", "Qty", "Rate", "Amount"]],
+      startY: cursorY,
+      head: [["Description", "Period", "Amount (USD)"]],
       body: items.map(item => [
         item.description || "Service",
-        String(item.qty),
-        `${item.rate.toFixed(2)} ${token}`,
-        `${(item.qty * item.rate).toFixed(2)} ${token}`,
+        item.period || "—",
+        `$${(item.qty * item.rate).toFixed(2)}`,
       ]),
-      theme: "plain",
+      theme: "grid",
       headStyles: {
-        fillColor: [245, 247, 250],
-        textColor: mutedText,
+        fillColor: [245, 245, 245],
+        textColor: [0, 0, 0],
         fontStyle: "bold",
-        fontSize: 7,
-        cellPadding: { top: 4, bottom: 4, left: 6, right: 6 },
+        fontSize: 10,
+        halign: "left",
+        font: "times"
       },
       bodyStyles: {
-        textColor: darkText,
-        fontSize: 9,
-        cellPadding: { top: 5, bottom: 5, left: 6, right: 6 },
+        textColor: [60, 60, 60],
+        fontSize: 10,
+        valign: "middle",
+        font: "times"
       },
-      alternateRowStyles: { fillColor: altRowBg },
       columnStyles: {
-        0: { cellWidth: 90 },
-        1: { cellWidth: 20, halign: "center" },
-        2: { cellWidth: 35, halign: "right" },
-        3: { cellWidth: 35, halign: "right", fontStyle: "bold" },
+        2: { halign: "right" }
       },
-      margin: { left: margin, right: margin },
-      tableLineWidth: 0,
-      tableLineColor: lightGray,
+      margin: { left: margin, right: margin }
     });
 
-    const tableEndY = doc.lastAutoTable.finalY;
+    cursorY = (doc as any).lastAutoTable.finalY + 15;
 
-    /* ── Totals Block (right-aligned) ── */
-    const totalBlockX = 130;
-    let totalY = tableEndY + 10;
-
-    doc.setDrawColor(...lightGray);
-    doc.line(totalBlockX, totalY - 2, pageWidth - margin, totalY - 2);
-
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...mutedText);
-    doc.text("Subtotal:", totalBlockX, totalY + 5);
-    doc.setTextColor(...darkText);
-    doc.text(`${total.toFixed(2)} ${token}`, pageWidth - margin, totalY + 5, { align: "right" });
-
-    totalY += 12;
+    /* ── CRYPTO PAYMENT DETAILS ── */
     doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...accent);
-    doc.text("Total Due:", totalBlockX, totalY + 5);
-    doc.text(`${total.toFixed(2)} ${token}`, pageWidth - margin, totalY + 5, { align: "right" });
+    doc.setFont("times", "bold");
+    doc.setTextColor(...black);
+    doc.text("Crypto Payment Details", margin, cursorY);
+    cursorY += 8;
 
-    if (usdEquivalent) {
-      totalY += 8;
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...mutedText);
-      doc.text(`~ $${usdEquivalent} USD`, pageWidth - margin, totalY + 5, { align: "right" });
-    }
-
-    /* ── Payment Section ── */
-    totalY += 20;
-    doc.setDrawColor(...lightGray);
-    doc.line(margin, totalY, pageWidth - margin, totalY);
-    totalY += 8;
-
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...mutedText);
-    doc.text("PAYMENT DETAILS", margin, totalY);
-
-    totalY += 7;
-    doc.setFontSize(8);
+    doc.setFontSize(10);
+    doc.setFont("times", "normal");
+    doc.setTextColor(...darkGray);
+    doc.text(`Accepted Networks: Solana / Base / Polygon`, margin, cursorY);
+    cursorY += 5;
+    doc.text(`Preferred Token: ${token}`, margin, cursorY);
+    cursorY += 6;
+    
+    doc.setFont("times", "bold");
+    doc.text("Secure Payment Link:", margin, cursorY);
+    cursorY += 4;
+    
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(...darkText);
-    doc.text(`Pay to: ${effectiveWallet}`, margin, totalY);
-    totalY += 5;
-    doc.text(`Network: Solana  •  Token: ${token}`, margin, totalY);
-
-    totalY += 8;
-    doc.setTextColor(...accent);
+    doc.setFontSize(7);
+    doc.setTextColor(0, 102, 204); // Link blue
+    const linkLines = doc.splitTextToSize(paymentLink, contentWidth - 40); // Leave room for QR
+    doc.text(linkLines, margin, cursorY);
+    
+    // Make text clickable
+    doc.link(margin, cursorY - 3, contentWidth - 40, linkLines.length * 3.5 + 2, { url: paymentLink });
+    
+    // Add "SCAN TO PAY" Section with QR Code
+    const qrSize = 40;
+    const qrX = pageWidth - margin - qrSize;
+    const qrY = cursorY - 12;
+    
+    // Cute rounded box for QR
+    doc.setDrawColor(240, 240, 240);
+    doc.setFillColor(252, 252, 252);
+    doc.roundedRect(qrX - 5, qrY - 5, qrSize + 10, qrSize + 15, 3, 3, "FD");
+    
+    doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+    
+    doc.setFont("times", "bold");
     doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    const displayLink = paymentLink.length > 80 ? paymentLink.substring(0, 77) + "..." : paymentLink;
-    doc.text(`Pay online: ${displayLink}`, margin, totalY, { link: { url: paymentLink } } as Parameters<typeof doc.text>[3]);
+    doc.setTextColor(...black);
+    doc.text("SCAN TO PAY", qrX + qrSize/2, qrY + qrSize + 6, { align: "center" });
+    
+    cursorY += Math.max(linkLines.length * 3.5 + 10, qrSize + 15);
 
-    /* ── Notes ── */
+    /* ── PAYMENT TERMS ── */
+    doc.setFontSize(12);
+    doc.setFont("times", "bold");
+    doc.setTextColor(...black);
+    doc.text("Payment Terms", margin, cursorY);
+    cursorY += 8;
+
+    doc.setFontSize(10);
+    doc.setFont("times", "normal");
+    doc.setTextColor(...darkGray);
+    const terms = [
+      `• Terms: Payment is due within ${dueDate ? Math.ceil((new Date(dueDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24)) : 7} days of the invoice date as per the agreement.`,
+      "• Tax Responsibility: The freelancer is responsible for all applicable taxes.",
+      "• Late Payments: Please ensure transfer is completed by the due date to maintain the recurring service cycle."
+    ];
+    doc.text(terms, margin, cursorY);
+    cursorY += terms.length * 5 + 10;
+
+    /* ── NOTES ── */
     if (notes) {
-      totalY += 18;
-      doc.setFontSize(7);
       doc.setFont("helvetica", "bold");
-      doc.setTextColor(...mutedText);
-      doc.text("NOTES", margin, totalY);
+      doc.text("Notes:", margin, cursorY);
+      cursorY += 5;
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(...darkText);
       const noteLines = doc.splitTextToSize(notes, contentWidth);
-      doc.text(noteLines, margin, totalY + 5);
+      doc.text(noteLines, margin, cursorY);
     }
 
-    /* ── Footer ── */
-    const footerY = 282;
-    doc.setDrawColor(...lightGray);
-    doc.line(margin, footerY - 4, pageWidth - margin, footerY - 4);
-    doc.setFontSize(6);
-    doc.setTextColor(...mutedText);
-    doc.text("Generated by Vertex — Vertex.vercel.app", margin, footerY);
-    if (signatureBase58) {
-      doc.text(`Wallet-signed: ${signatureBase58.slice(0, 44)}...`, margin, footerY + 4);
+    // Footer
+    const totalPages = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      
+      // Simulated 1D Barcode
+      const bcX = pageWidth - margin - 35;
+      const bcY = 278;
+      doc.setDrawColor(0, 0, 0);
+      for (let j = 0; j < 35; j++) {
+        const w = (j % 3 === 0) ? 0.4 : 0.15;
+        doc.setLineWidth(w);
+        doc.line(bcX + j * 1, bcY, bcX + j * 1, bcY + 6);
+      }
+      doc.setFontSize(5);
+      doc.setTextColor(150, 150, 150);
+      doc.text(invoiceNumber, bcX + 17.5, bcY + 8, { align: "center" });
+      
+      doc.setFontSize(6);
+      doc.setTextColor(...lightGray);
+      doc.text("Generated by Vertex — vertex.vercel.app", margin, 285);
+      doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, 285, { align: "right" });
     }
-    doc.text("Page 1 of 1", pageWidth - margin, footerY, { align: "right" });
 
     // Persist to database
     try {
@@ -394,7 +426,10 @@ export default function InvoicePage() {
     try {
       const { paymentLink } = await buildPdfDoc();
       const pct = isMilestone ? " (50% Milestone)" : "";
-      const message = `🧾 Invoice #${invoiceNumber} from ${vendorName} for ${total} ${token}${pct}.\n\nSecurely view and pay on-chain via Vertex:\n${paymentLink}`;
+      const message = `🧾 Invoice #${invoiceNumber} from ${vendorName} for ${total} ${token}${pct}.
+
+Securely view and pay on-chain via Vertex:
+${paymentLink}`;
       await navigator.clipboard.writeText(message);
       toast("WhatsApp/Telegram link copied to clipboard!", "success");
     } catch {
@@ -456,6 +491,7 @@ export default function InvoicePage() {
                 <div className="space-y-4 p-5 bg-white/[0.02] rounded-2xl border border-white/5 shadow-inner">
                   <input type="text" placeholder="Your Full Legal Name" value={vendorName} onChange={(e) => setVendorName(e.target.value)} className="w-full bg-transparent border-b border-white/10 py-2 text-white font-bold focus:border-primary transition-all outline-none" />
                   <input type="email" placeholder="your@email.com" value={vendorEmail} onChange={(e) => setVendorEmail(e.target.value)} className="w-full bg-transparent text-xs text-muted-foreground outline-none placeholder:opacity-30" />
+                  <input type="text" placeholder="Your Phone Number" value={vendorPhone} onChange={(e) => setVendorPhone(e.target.value)} className="w-full bg-transparent text-xs text-muted-foreground outline-none placeholder:opacity-30" />
                   <textarea placeholder="Business Address / Billing Info" rows={2} value={vendorAddress} onChange={(e) => setVendorAddress(e.target.value)} className="w-full bg-transparent text-xs text-muted-foreground outline-none resize-none placeholder:opacity-30" />
                   <input type="text" placeholder="Tax ID / VAT # / TIN (optional)" value={taxId} onChange={(e) => setTaxId(e.target.value)} className="w-full bg-transparent text-xs text-primary font-bold outline-none placeholder:opacity-20" />
                 </div>
@@ -487,10 +523,16 @@ export default function InvoicePage() {
                     </button>
                   ))}
                 </div>
+                {token === "SOL" && solPrice && (
+                  <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-xl animate-in fade-in duration-500">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                    <span className="text-[10px] font-black text-white/40 uppercase tracking-tighter">SOL/USD: <span className="text-primary">${solPrice.toLocaleString()}</span></span>
+                  </div>
+                )}
               </div>
 
               {/* Table Header */}
-              <div className="grid grid-cols-[1fr_80px_100px_36px] gap-3 px-2 text-[9px] font-black uppercase tracking-widest text-white/20">
+              <div className="grid grid-cols-[1fr_100px_60px_100px_36px] gap-3 px-2 text-[9px] font-black uppercase tracking-widest text-white/20">
                 <span>Description</span>
                 <span className="text-center">Qty</span>
                 <span className="text-right">Rate ({token})</span>
@@ -499,8 +541,9 @@ export default function InvoicePage() {
 
               <div className="space-y-3">
                 {items.map((item) => (
-                  <div key={item.id} className="grid grid-cols-[1fr_80px_100px_36px] gap-3 items-center group animate-in slide-in-from-right duration-300">
+                  <div key={item.id} className="grid grid-cols-[1fr_100px_60px_100px_36px] gap-3 items-center group animate-in slide-in-from-right duration-300">
                     <input type="text" placeholder="e.g. Smart Contract Audit" value={item.description} onChange={(e) => updateItem(item.id, "description", e.target.value)} className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:bg-white/[0.08] transition-all outline-none" />
+                    <input type="text" placeholder="Jan 1 - Jan 7" value={item.period} onChange={(e) => updateItem(item.id, "period", e.target.value)} className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-xs outline-none" />
                     <input type="number" min="1" placeholder="1" title="Quantity" value={item.qty} onChange={(e) => updateItem(item.id, "qty", Math.max(1, parseInt(e.target.value) || 1))} className="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white text-center outline-none" />
                     <div className="relative">
                       <input type="number" step="0.01" placeholder="0.00" value={item.rate || ""} onChange={(e) => updateItem(item.id, "rate", parseFloat(e.target.value) || 0)} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white pr-10 text-right outline-none" />
@@ -538,79 +581,151 @@ export default function InvoicePage() {
                 <p className="text-[10px] font-black uppercase tracking-widest text-primary italic">Live Archive Preview</p>
               </div>
 
-              {/* Clean white PDF preview */}
-              <div className="bg-white p-10 min-h-[520px] flex flex-col text-black font-sans text-[10px] selection:bg-primary/20">
-                {/* Header */}
-                <div className="flex justify-between items-start mb-8">
-                  <div>
-                    <p className="text-[10px] font-black text-primary tracking-widest">Vertex</p>
-                    <p className="text-[7px] text-gray-400 uppercase font-bold">PROTOCOL TERMINAL</p>
-                  </div>
-                  <div className="text-right">
-                    <h2 className="text-2xl font-black tracking-tight text-gray-900 uppercase">INVOICE</h2>
-                    <p className="text-[8px] text-gray-400 mt-0.5">#{mounted ? invoiceNumber : "INV-XXXX"}</p>
-                    <p className="text-[7px] text-gray-400">{mounted ? currentDate : "00/00/00"}</p>
-                  </div>
+              <div className="bg-white rounded-xl p-10 min-h-[842px] flex flex-col text-black font-serif leading-relaxed border border-zinc-100">
+                {/* ── HEADER: Name + contact info line ── */}
+                <div className="mb-8">
+                  <h1 className="text-xl font-bold tracking-tight mb-2">{(vendorName || "YOUR NAME / ORGANIZATION").toUpperCase()}</h1>
+                  <p className="text-[11px] text-zinc-500 leading-relaxed">
+                    {vendorAddress && <>Address: {vendorAddress.replace(/\n/g, ", ")}.</>}
+                    {vendorPhone && <><br />Phone number: {vendorPhone}</>}
+                    {vendorEmail && <>| Mail: {vendorEmail}</>}
+                  </p>
+                  <div className="mt-6 h-px bg-zinc-200" />
                 </div>
 
-                {/* Divider */}
-                <div className="h-px bg-gray-200 mb-6" />
+                {/* ── TITLE ── */}
+                <h2 className="text-3xl font-bold tracking-tight mb-10">INVOICE</h2>
 
-                {/* From / To */}
-                <div className="grid grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <p className="text-[7px] font-bold text-gray-400 uppercase tracking-wider mb-1">From</p>
-                    <p className="font-bold text-[9px] text-gray-900">{vendorName || "—"}</p>
-                    {vendorEmail && <p className="text-[7px] text-gray-500">{vendorEmail}</p>}
-                    <p className="text-[7px] text-gray-400 leading-tight mt-0.5">{vendorAddress || ""}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[7px] font-bold text-gray-400 uppercase tracking-wider mb-1">Bill To</p>
-                    <p className="font-bold text-[9px] text-gray-900">{clientName || "—"}</p>
-                    {clientEmail && <p className="text-[7px] text-gray-500">{clientEmail}</p>}
-                    <p className="text-[7px] text-gray-400 leading-tight mt-0.5">{clientAddress || ""}</p>
-                  </div>
+                {/* ── FROM / TO (inline, stacked) ── */}
+                <div className="space-y-3 mb-8 text-[11px] text-zinc-700">
+                  <p><span className="font-bold text-black text-xs">From:</span> {vendorName || "—"} {vendorAddress ? vendorAddress.replace(/\n/g, ", ") : ""}</p>
+                  <p><span className="font-bold text-black text-xs">To:</span> {clientName || "—"} {clientAddress ? clientAddress.replace(/\n/g, ", ") : ""}</p>
                 </div>
 
-                {/* Items Table */}
-                <div className="flex-grow">
-                  <div className="grid grid-cols-[1fr_40px_60px_60px] bg-gray-50 py-1.5 px-2 rounded text-[7px] font-bold text-gray-400 uppercase tracking-wider">
-                    <span>Description</span>
-                    <span className="text-center">Qty</span>
-                    <span className="text-right">Rate</span>
-                    <span className="text-right">Amount</span>
-                  </div>
-                  <div className="divide-y divide-gray-100">
-                    {items.map((item, idx) => (
-                      <div key={item.id} className={`grid grid-cols-[1fr_40px_60px_60px] py-2 px-2 text-[8px] ${idx % 2 === 1 ? "bg-gray-50/50" : ""}`}>
-                        <span className="text-gray-800">{item.description || "Service"}</span>
-                        <span className="text-center text-gray-600">{item.qty}</span>
-                        <span className="text-right text-gray-600">{item.rate.toFixed(2)}</span>
-                        <span className="text-right font-bold text-gray-900">{(item.qty * item.rate).toFixed(2)}</span>
+                {/* ── INVOICE DETAILS (stacked, not 2-col) ── */}
+                <div className="space-y-2 mb-10 text-[11px]">
+                  <p><span className="font-bold text-black text-xs">Invoice Number:</span> <span className="text-zinc-600">{invoiceNumber}</span></p>
+                  <p><span className="font-bold text-black text-xs">Invoice Date:</span> <span className="text-zinc-600">{currentDate}</span></p>
+                  <p><span className="font-bold text-black text-xs">Due Date:</span> <span className="text-zinc-600">{dueDate || "—"}{dueDate ? ` (${Math.max(0, Math.ceil((new Date(dueDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24)))} days from invoice date)` : ""}</span></p>
+                </div>
+
+                {/* ── DESCRIPTION OF SERVICES (header + table) ── */}
+                <div className="flex-grow mb-10">
+                  <h3 className="text-sm font-bold text-black mb-4 uppercase tracking-wide">Description of Services</h3>
+                  <table className="w-full text-left border-collapse border border-zinc-200">
+                    <thead>
+                      <tr className="bg-zinc-50 border-b border-zinc-200">
+                        <th className="py-3 px-4 text-[11px] font-bold text-black uppercase">Description</th>
+                        <th className="py-3 px-4 text-[11px] font-bold text-black uppercase">Period</th>
+                        <th className="py-3 px-4 text-[11px] font-bold text-black text-right uppercase">Amount (USD)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-[11px]">
+                      {items.map((item, idx) => (
+                        <tr key={idx} className="border-b border-zinc-100">
+                          <td className="py-4 px-4 text-zinc-700">{item.description || "Service"}</td>
+                          <td className="py-4 px-4 text-zinc-500">{item.period || "—"}</td>
+                          <td className="py-4 px-4 text-right font-bold text-black text-xs">${(item.qty * item.rate).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* ── GRAND TOTAL ── */}
+                <div className="flex justify-end mb-10">
+                  <div className="w-48 space-y-2 text-right">
+                    <div className="flex justify-between text-[11px] text-zinc-500">
+                      <span>Subtotal ({token})</span>
+                      <span>{total.toFixed(4)}</span>
+                    </div>
+                    <div className="h-px bg-zinc-100" />
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-xs font-bold text-black uppercase">Grand Total</span>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-black tracking-tighter leading-none">{total.toFixed(4)} {token}</p>
+                        {usdEquivalent && (
+                          <p className="text-[10px] text-zinc-400 font-medium italic mt-1">
+                            Est. ${usdEquivalent} USD
+                          </p>
+                        )}
                       </div>
-                    ))}
+                    </div>
                   </div>
                 </div>
 
-                {/* Totals */}
-                <div className="mt-10 pt-4 border-t border-gray-100">
-                  <div className="flex justify-end gap-10 items-center">
-                    <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Grand Total</span>
-                    <span className="text-2xl font-black text-gray-900 italic tracking-tighter">{total.toFixed(2)} {token}</span>
+                {/* ── CRYPTO PAYMENT DETAILS (full-width, stacked) ── */}
+                <div className="mb-10">
+                  <h3 className="text-sm font-bold text-black mb-3 uppercase tracking-wide">Crypto Payment Details</h3>
+                  <div className="space-y-2 text-[11px] text-zinc-700">
+                    <p><span className="font-bold">Accepted Networks:</span> Solana / Base / Polygon</p>
+                    <p><span className="font-bold">Preferred Token:</span> {token}</p>
+                    <div className="pt-2 flex justify-between items-end gap-6">
+                      <div className="flex-grow min-w-0">
+                        <p className="font-bold text-primary mb-1 text-xs">Secure Payment Link:</p>
+                        <a 
+                          href={mounted && effectiveWallet ? `${getOrigin()}/pay/${encodePaymentRequest({
+                            recipient: effectiveWallet,
+                            amount: isMilestone ? total / 2 : total,
+                            token,
+                            description: `Invoice ${invoiceNumber}`,
+                            memo: `Vertex-INV:${invoiceNumber}`,
+                          })}` : "#"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-[9px] text-zinc-500 break-all leading-relaxed bg-zinc-50 p-3 rounded-lg border border-zinc-100 block hover:bg-zinc-100 transition-colors"
+                        >
+                          {mounted && effectiveWallet ? `${getOrigin()}/pay/${encodePaymentRequest({
+                            recipient: effectiveWallet,
+                            amount: isMilestone ? total / 2 : total,
+                            token,
+                            description: `Invoice ${invoiceNumber}`,
+                            memo: `Vertex-INV:${invoiceNumber}`,
+                          })}` : "https://vertex.vercel.app/pay/[auto-generated]"}
+                        </a>
+                      </div>
+                      {previewQr && (
+                        <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                          <div className="w-24 h-24 border-2 border-zinc-100 rounded-2xl overflow-hidden bg-white p-2 shadow-sm hover:shadow-md transition-shadow">
+                            <img src={previewQr} alt="Payment QR" className="w-full h-full object-contain" />
+                          </div>
+                          <span className="text-[7px] font-bold text-zinc-400 tracking-widest uppercase">Scan to Pay</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  {usdEquivalent && (
-                    <p className="text-right text-[8px] text-gray-400 font-mono mt-1">TELEMETRIC ESTIMATE: ${usdEquivalent} USD</p>
-                  )}
                 </div>
 
-                {/* Footer */}
-                <div className="mt-6 pt-3 border-t border-gray-100 flex justify-between items-end">
-                  <div>
-                    <p className="text-[7px] text-gray-400">Pay to: <span className="font-mono">{effectiveWallet ? `${effectiveWallet.slice(0, 12)}...` : "—"}</span></p>
-                    <p className="text-[6px] text-gray-300 mt-0.5">Generated by Vertex</p>
+                {/* ── PAYMENT TERMS (full-width, bullet list) ── */}
+                <div className="mb-10">
+                  <h3 className="text-sm font-bold text-black mb-3 uppercase tracking-wide">Payment Terms</h3>
+                  <ul className="text-[11px] text-zinc-700 space-y-2 list-none">
+                    <li>• <span className="font-bold">Terms:</span> Payment is due within {dueDate ? Math.max(0, Math.ceil((new Date(dueDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24))) : 7} days of the invoice date.</li>
+                    <li>• <span className="font-bold">Tax Responsibility:</span> The freelancer is responsible for all applicable taxes.</li>
+                    <li>• <span className="font-bold">Late Payments:</span> Please ensure transfer is completed by the due date.</li>
+                  </ul>
+                </div>
+
+                {/* ── NOTES (inline prefix) ── */}
+                {notes && (
+                  <div className="pt-6 border-t border-zinc-100">
+                    <p className="text-[11px] text-zinc-700 italic"><span className="font-bold not-italic">Notes:</span> {notes}</p>
                   </div>
-                  <div className="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-100">
-                    <FileText className="w-5 h-5 text-gray-300" />
+                )}
+
+                {/* ── PREVIEW FOOTER BARCODE ── */}
+                <div className="mt-auto pt-10 border-t border-zinc-100 flex justify-between items-end">
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Vertex Protocol</p>
+                    <p className="text-[8px] text-zinc-400 italic">Secure On-Chain Billing & Non-Repudiation</p>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <div className="flex gap-[1px]">
+                      {[...Array(40)].map((_, i) => (
+                        <div key={i} className="bg-black" style={{ width: (i % 3 === 0 ? '1.5px' : '0.5px'), height: '24px' }} />
+                      ))}
+                    </div>
+                    <span className="text-[7px] text-zinc-400 mt-1 font-mono">{invoiceNumber}</span>
                   </div>
                 </div>
               </div>
