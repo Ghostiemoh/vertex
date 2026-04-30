@@ -28,8 +28,8 @@ describe("payment-utils", () => {
   it("calculates fee breakdowns deterministically", () => {
     const breakdown = calculatePaymentBreakdown(100);
     expect(breakdown.recipientAmount).toBe(100);
-    expect(breakdown.platformFee).toBe(0.1);
-    expect(breakdown.totalAmount).toBe(100.1);
+    expect(breakdown.platformFee).toBe(0.5);
+    expect(breakdown.totalAmount).toBe(100.5);
   });
 
   it("selects the correct token mint by cluster", () => {

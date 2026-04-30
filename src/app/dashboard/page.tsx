@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import useSWR from "swr";
 import { motion } from "framer-motion";
 import {
   AlertCircle,
@@ -92,120 +93,109 @@ const DEMO_INVOICES: InvoiceRecord[] = [
 export default function Dashboard() {
   const { user, isAuthenticated } = useSession();
   const { toast } = useToast();
-  const [stats, setStats] = useState({
+  const isDemo = !isAuthenticated;
+
+  const fetchDashboardData = async () => {
+    if (!supabase || !user?.id) throw new Error("No user");
+
+    const { data: invData } = await supabase
+      .from("invoices")
+      .select("id, invoice_number, total, token, status, payment_id, created_at")
+      .eq("auth_user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    const { data: paymentLinkData } = await supabase
+      .from("payment_requests")
+      .select("id, label, amount, token, payment_status, created_at")
+      .eq("auth_user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    const { count: contractCount } = await supabase
+      .from("contracts")
+      .select("*", { count: "exact", head: true })
+      .eq("auth_user_id", user.id);
+
+    const { count: clientCount } = await supabase
+      .from("clients")
+      .select("*", { count: "exact", head: true })
+      .eq("auth_user_id", user.id);
+
+    const { count: paymentLinkCount } = await supabase
+      .from("payment_requests")
+      .select("*", { count: "exact", head: true })
+      .eq("auth_user_id", user.id);
+
+    const { data: allInvoices } = await supabase
+      .from("invoices")
+      .select("total, status")
+      .eq("auth_user_id", user.id);
+
+    const invoiceStats = (allInvoices as InvoiceStat[] | null) || [];
+    const totalInv = invoiceStats
+      .filter((item) => mapLegacyInvoiceStatus(item.status) === "payment_finalized")
+      .reduce((sum, item) => sum + Number(item.total), 0);
+    const totalPending = invoiceStats
+      .filter((item) => mapLegacyInvoiceStatus(item.status) !== "payment_finalized")
+      .reduce((sum, item) => sum + Number(item.total), 0);
+
+    const invoiceRows = (invData || []).map((invoice) => ({
+      ...(invoice),
+      kind: "invoice",
+    }));
+    const paymentRows = (paymentLinkData || []).map((paymentLink) => ({
+      id: paymentLink.id,
+      invoice_number: paymentLink.label || "Direct payment link",
+      total: Number(paymentLink.amount),
+      token: paymentLink.token,
+      status: paymentLink.payment_status,
+      payment_id: paymentLink.id,
+      created_at: paymentLink.created_at,
+      kind: "payment_link",
+    }));
+
+    return {
+      recentInvoices: [...invoiceRows, ...paymentRows]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 8),
+      stats: {
+        totalInvoiced: totalInv,
+        activeContracts: contractCount || 0,
+        totalClients: clientCount || 0,
+        pendingPayments: totalPending,
+        paymentLinks: paymentLinkCount || 0,
+      }
+    };
+  };
+
+  const { data, error, isLoading: swrLoading, mutate } = useSWR(
+    !isDemo && user?.id ? ["dashboard", user.id] : null,
+    fetchDashboardData,
+    { revalidateOnFocus: false }
+  );
+
+  useEffect(() => {
+    if (error) {
+      toast("Failed to load dashboard data. Please try again.", "error");
+    }
+  }, [error, toast]);
+
+  const recentInvoices = isDemo ? DEMO_INVOICES : (data?.recentInvoices || []);
+  const stats = isDemo ? {
+    totalInvoiced: 3.5,
+    activeContracts: 2,
+    totalClients: 3,
+    pendingPayments: 1,
+    paymentLinks: 2,
+  } : (data?.stats || {
     totalInvoiced: 0,
     activeContracts: 0,
     totalClients: 0,
     pendingPayments: 0,
     paymentLinks: 0,
   });
-  const [recentInvoices, setRecentInvoices] = useState<InvoiceRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const isDemo = !isAuthenticated;
-
-  const fetchDashboardData = useCallback(async () => {
-    if (!supabase || !user?.id) {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-
-      const { data: invData } = await supabase
-        .from("invoices")
-        .select("id, invoice_number, total, token, status, payment_id, created_at")
-        .eq("auth_user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(5);
-
-      const { data: paymentLinkData } = await supabase
-        .from("payment_requests")
-        .select("id, label, amount, token, payment_status, created_at")
-        .eq("auth_user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(5);
-
-      const { count: contractCount } = await supabase
-        .from("contracts")
-        .select("*", { count: "exact", head: true })
-        .eq("auth_user_id", user.id);
-
-      const { count: clientCount } = await supabase
-        .from("clients")
-        .select("*", { count: "exact", head: true })
-        .eq("auth_user_id", user.id);
-
-      const { count: paymentLinkCount } = await supabase
-        .from("payment_requests")
-        .select("*", { count: "exact", head: true })
-        .eq("auth_user_id", user.id);
-
-      const { data: allInvoices } = await supabase
-        .from("invoices")
-        .select("total, status")
-        .eq("auth_user_id", user.id);
-
-      const invoiceStats = (allInvoices as InvoiceStat[] | null) || [];
-      const totalInv = invoiceStats
-        .filter((item) => mapLegacyInvoiceStatus(item.status) === "payment_finalized")
-        .reduce((sum, item) => sum + Number(item.total), 0);
-      const totalPending = invoiceStats
-        .filter((item) => mapLegacyInvoiceStatus(item.status) !== "payment_finalized")
-        .reduce((sum, item) => sum + Number(item.total), 0);
-
-      const invoiceRows: InvoiceRecord[] = (invData || []).map((invoice) => ({
-        ...(invoice as Omit<InvoiceRecord, "kind">),
-        kind: "invoice",
-      }));
-      const paymentRows: InvoiceRecord[] = (paymentLinkData || []).map((paymentLink) => ({
-        id: paymentLink.id as string,
-        invoice_number: (paymentLink.label as string) || "Direct payment link",
-        total: Number(paymentLink.amount),
-        token: paymentLink.token as string,
-        status: paymentLink.payment_status as string,
-        payment_id: paymentLink.id as string,
-        created_at: paymentLink.created_at as string,
-        kind: "payment_link",
-      }));
-
-      setRecentInvoices(
-        [...invoiceRows, ...paymentRows]
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-          .slice(0, 8)
-      );
-
-      setStats({
-        totalInvoiced: totalInv,
-        activeContracts: contractCount || 0,
-        totalClients: clientCount || 0,
-        pendingPayments: totalPending,
-        paymentLinks: paymentLinkCount || 0,
-      });
-    } catch {
-      toast("Failed to load dashboard data. Please try again.", "error");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast, user]);
-
-  useEffect(() => {
-    if (isDemo) {
-      setRecentInvoices(DEMO_INVOICES);
-      setStats({
-        totalInvoiced: 3.5,
-        activeContracts: 2,
-        totalClients: 3,
-        pendingPayments: 1,
-        paymentLinks: 2,
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    void fetchDashboardData();
-  }, [fetchDashboardData, isDemo]);
+  const isLoading = !isDemo && swrLoading;
 
   const getStatusBadge = (status: string) => {
     const normalizedStatus = mapLegacyInvoiceStatus(status);
@@ -263,7 +253,7 @@ export default function Dashboard() {
           {!isDemo && (
             <button
               title="Refresh data"
-              onClick={fetchDashboardData}
+              onClick={() => mutate()}
               className="p-3 bg-white/5 border border-white/10 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
             >
               <Loader2 className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`} />

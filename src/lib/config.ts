@@ -30,9 +30,9 @@ export const SOLSCAN_CLUSTER_PARAM = IS_DEVNET ? "devnet" : "mainnet-beta";
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "https://vertex-pay.vercel.app";
 
-const feeBps = Number(process.env.NEXT_PUBLIC_VERTEX_FEE_BPS ?? "10");
+const feeBps = Number(process.env.NEXT_PUBLIC_VERTEX_FEE_BPS ?? "50");
 
-export const PLATFORM_FEE_BPS = Number.isFinite(feeBps) && feeBps >= 0 ? feeBps : 10;
+export const PLATFORM_FEE_BPS = Number.isFinite(feeBps) && feeBps >= 0 ? feeBps : 50;
 export const PLATFORM_FEE_ENABLED = PLATFORM_FEE_BPS > 0;
 export const PLATFORM_FEE_LABEL = PLATFORM_FEE_ENABLED
   ? `${(PLATFORM_FEE_BPS / 100).toFixed(2)}% Vertex fee`
