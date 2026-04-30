@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
+import useSWR from "swr";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import {
@@ -40,6 +41,7 @@ import {
   PLATFORM_FEE_ENABLED,
   TREASURY_WALLET,
 } from "@/lib/config";
+import { type PaymentStatus } from "@/lib/payments";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -60,12 +62,29 @@ interface PaymentRecord {
     totalAmount: number;
     feeEnabled: boolean;
   };
+  lifecycle?: {
+    status: PaymentStatus;
+    signature: string | null;
+    confirmationStatus: "processed" | "confirmed" | "finalized" | null;
+    confirmedAt: string | null;
+    finalizedAt: string | null;
+    failureReason: string | null;
+  };
 }
 
 const TOKEN_LABELS: Record<PaymentToken, { color: string }> = {
   SOL: { color: "text-[#14F195]" },
   USDC: { color: "text-[#2775CA]" },
   USDT: { color: "text-[#26A17B]" },
+};
+
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!res.ok || !data.request) {
+    throw new Error(data.error || "Invalid payment link.");
+  }
+  return data;
 };
 
 export default function PaymentPage({ params }: PageProps) {
@@ -77,34 +96,26 @@ export default function PaymentPage({ params }: PageProps) {
   const [status, setStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+
+  const { data: fetchedData, error: fetchError, isLoading } = useSWR<PaymentRecord>(
+    id ? `/api/payments/${id}` : null,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
 
   useEffect(() => {
-    async function loadPaymentData() {
-      try {
-        setIsLoading(true);
-        const response = await fetch(`/api/payments/${id}`);
-        const data = (await response.json()) as PaymentRecord & { error?: string };
-
-        if (!response.ok || !data.request) {
-          throw new Error(data.error || "Invalid payment link.");
-        }
-
-        setPaymentData(data);
-        if (data.invoice?.status === "paid" && data.invoice.tx_hash) {
-          setTxHash(data.invoice.tx_hash);
-          setStatus("success");
-        }
-      } catch (err) {
-        setStatus("error");
-        setError(err instanceof Error ? err.message : "Unable to load payment request.");
-      } finally {
-        setIsLoading(false);
+    if (fetchedData) {
+      setPaymentData(fetchedData);
+      if (fetchedData.lifecycle?.signature && fetchedData.lifecycle.status === "payment_finalized") {
+        setTxHash(fetchedData.lifecycle.signature);
+        setStatus("success");
       }
     }
-
-    loadPaymentData();
-  }, [id]);
+    if (fetchError) {
+      setStatus("error");
+      setError(fetchError instanceof Error ? fetchError.message : "Unable to load payment request.");
+    }
+  }, [fetchedData, fetchError]);
 
   useEffect(() => {
     if (status === "success") {
@@ -219,7 +230,8 @@ export default function PaymentPage({ params }: PageProps) {
       const latestBlockhash = await connection.getLatestBlockhash();
       await connection.confirmTransaction({
         signature,
-        ...latestBlockhash,
+        blockhash: latestBlockhash.blockhash,
+        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
       });
 
       const verifyResponse = await fetch(`/api/payments/${id}`, {
@@ -262,6 +274,7 @@ export default function PaymentPage({ params }: PageProps) {
 
   const request = paymentData?.request;
   const invoice = paymentData?.invoice;
+  const lifecycle = paymentData?.lifecycle;
   const breakdown = paymentData?.breakdown || calculatePaymentBreakdown(0);
   const tokenStyle = request ? TOKEN_LABELS[request.token] : TOKEN_LABELS.SOL;
 
@@ -288,7 +301,7 @@ export default function PaymentPage({ params }: PageProps) {
               <span className="text-white font-black">
                 {request?.amount} {request?.token}
               </span>
-              .
+              {lifecycle?.status === "payment_confirmed" ? " and is still waiting for finality." : "."}
             </p>
 
             <div className="bg-black/40 p-4 rounded-xl mb-8 border border-white/5 overflow-hidden">

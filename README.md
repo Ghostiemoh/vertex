@@ -1,13 +1,13 @@
 # Vertex ⚡
-### High-Performance Crypto Invoicing & Surgical Settlement
+### Professional Crypto Invoicing on Solana
 
 [![Solana](https://img.shields.io/badge/Network-Solana-00FFA3?style=flat-square&logo=solana)](https://solana.com)
 [![Next.js](https://img.shields.io/badge/Frontend-Next.js%2016-000000?style=flat-square&logo=next.js)](https://nextjs.org)
 [![Supabase](https://img.shields.io/badge/Backend-Supabase-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com)
 [![Vercel](https://img.shields.io/badge/Deployment-Vercel-000000?style=flat-square&logo=vercel)](https://vertex-pay.vercel.app)
 
-**The Surgical Point of Finality.**
-Vertex is a professional-grade payments infrastructure designed for the Solana freelance economy. It is the high-performance intersection where professional agreements meet on-chain finality—focused on absolute precision, high-agency workflow, and institutional-grade trust.
+**Get paid instantly.**
+Vertex is a simple, professional invoicing tool designed for the Solana freelance economy. It lets freelancers generate professional agreements and get paid in USDC or SOL directly to their wallets. 
 
 [**Launch Live App 🚀**](https://vertex-pay.vercel.app)
 
@@ -16,10 +16,10 @@ Vertex is a professional-grade payments infrastructure designed for the Solana f
 ![Vertex Landing Page](./public/app-screenshot.png)
 
 ## 🎯 Vision
-Vertex solves the fragmentation in the Solana freelance economy. By bringing **Surgical Finality** to professional workflows, vertex empowers individuals to operate with the technical clarity and authority of an institution. Every transaction occurs at the exact intersection of agreement and execution.
+Vertex solves the fragmentation in the Solana freelance economy. We replace clunky manual transfers with a streamlined, professional invoicing flow that settles instantly on-chain.
 
 ## ✨ Core Features
-- **⚡ Surgical Settlement**: Generate wallet-signed invoices with deep SVM finality.
+- **⚡ Instant Settlement**: Generate wallet-signed invoices that pay directly to your wallet.
 - **🔗 Smart Payment Links**: Direct, cryptographic links for SOL, USDC, or USDT.
 - **📜 Agreement Drafting**: Formal service agreements that transition seamlessly into invoices.
 - **🔍 Precision Verification**: Automated server-side transaction signature verification.

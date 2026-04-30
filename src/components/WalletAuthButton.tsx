@@ -1,20 +1,24 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { Loader2, LogOut, ShieldCheck } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useSession } from "@/components/SessionProvider";
-import { useEffect, useState } from "react";
+
+function useIsMounted() {
+  return useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false
+  );
+}
 
 export function WalletAuthButton() {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsMounted();
   const wallet = useWallet();
   const { isAuthenticated, isLoading, signInWithWallet, signOut, walletAddress } =
     useSession();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   if (!mounted) {
     return null;

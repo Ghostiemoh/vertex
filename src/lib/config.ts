@@ -17,7 +17,18 @@ export const NETWORK_WARNING = IS_DEVNET
 export const DEFAULT_RPC_ENDPOINT =
   process.env.NEXT_PUBLIC_SOLANA_RPC_URL || clusterApiUrl(VERTEX_NETWORK);
 
+export const SERVER_RPC_ENDPOINT =
+  process.env.SOLANA_RPC_URL || process.env.NEXT_PUBLIC_SOLANA_RPC_URL || clusterApiUrl(VERTEX_NETWORK);
+
+export const SERVER_FALLBACK_RPC_ENDPOINT =
+  process.env.SOLANA_FALLBACK_RPC_URL || DEFAULT_RPC_ENDPOINT;
+
+export const SERVER_RPC_WS_ENDPOINT = process.env.SOLANA_RPC_WSS_URL;
+
 export const SOLSCAN_CLUSTER_PARAM = IS_DEVNET ? "devnet" : "mainnet-beta";
+
+export const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || "https://vertex-pay.vercel.app";
 
 const feeBps = Number(process.env.NEXT_PUBLIC_VERTEX_FEE_BPS ?? "10");
 
@@ -28,6 +39,7 @@ export const PLATFORM_FEE_LABEL = PLATFORM_FEE_ENABLED
   : "No Vertex fee";
 
 export const TREASURY_WALLET =
+  process.env.VERTEX_TREASURY_WALLET ||
   process.env.NEXT_PUBLIC_VERTEX_TREASURY_WALLET ||
   "43zpDV5PK347E2gqzpv2LJdDRoCwbv2deCBFcRDysFXG";
 

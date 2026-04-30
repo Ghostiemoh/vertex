@@ -6,7 +6,6 @@ import {
   createPostResponse,
 } from "@solana/actions";
 import {
-  Connection,
   PublicKey,
   Transaction,
   SystemProgram,
@@ -27,14 +26,12 @@ import {
   type PaymentToken,
 } from "@/lib/payment-utils";
 import {
-  DEFAULT_RPC_ENDPOINT,
   NETWORK_LABEL,
   PLATFORM_FEE_ENABLED,
   TREASURY_WALLET,
 } from "@/lib/config";
 import { getOrigin } from "@/lib/utils";
-
-const connection = new Connection(DEFAULT_RPC_ENDPOINT, "confirmed");
+import { withRpcFallback } from "@/lib/rpc";
 
 export async function GET(
   _req: Request,
@@ -106,7 +103,9 @@ export async function POST(
     const treasuryPubkey = new PublicKey(TREASURY_WALLET);
     const breakdown = calculatePaymentBreakdown(request.amount);
     const transaction = new Transaction();
-    const latestBlockhash = await connection.getLatestBlockhash();
+    const latestBlockhash = await withRpcFallback("action-blockhash", (connection) =>
+      connection.getLatestBlockhash("confirmed")
+    );
 
     transaction.recentBlockhash = latestBlockhash.blockhash;
     transaction.feePayer = payerPubkey;
@@ -147,7 +146,9 @@ export async function POST(
       const recipientAta = await getAssociatedTokenAddress(mintPubkey, recipientPubkey);
 
       try {
-        await getAccount(connection, recipientAta);
+        await withRpcFallback("recipient-ata-check", (connection) =>
+          getAccount(connection, recipientAta)
+        );
       } catch {
         transaction.add(
           createAssociatedTokenAccountInstruction(
@@ -171,7 +172,9 @@ export async function POST(
       if (PLATFORM_FEE_ENABLED && breakdown.platformFee > 0) {
         const treasuryAta = await getAssociatedTokenAddress(mintPubkey, treasuryPubkey);
         try {
-          await getAccount(connection, treasuryAta);
+          await withRpcFallback("treasury-ata-check", (connection) =>
+            getAccount(connection, treasuryAta)
+          );
         } catch {
           transaction.add(
             createAssociatedTokenAccountInstruction(

@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useConnection } from "@solana/wallet-adapter-react";
-import { PythHttpClient, getPythProgramKeyForCluster } from "@pythnetwork/client";
 import { AnimatePresence, motion } from "framer-motion";
 import { Activity, Cpu, Globe, TrendingUp } from "lucide-react";
-import { VERTEX_NETWORK, NETWORK_SHORT_LABEL } from "@/lib/config";
+import { NETWORK_SHORT_LABEL } from "@/lib/config";
 
 export function ProtocolPulse() {
   const { connection } = useConnection();

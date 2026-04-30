@@ -27,7 +27,7 @@ export default function InvoiceEmail({
   clientName = "Client",
   total = 0,
   token = "USDC",
-  paymentLink = "https://Vertex.vercel.app",
+  paymentLink = "https://vertex-pay.vercel.app",
   notes = "",
 }: InvoiceEmailProps) {
   return (

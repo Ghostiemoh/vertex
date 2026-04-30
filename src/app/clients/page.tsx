@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Building,
@@ -32,7 +31,6 @@ interface Client {
 }
 
 export default function ClientDirectory() {
-  const { publicKey, connected } = useWallet();
   const { user, isAuthenticated } = useSession();
   const { toast } = useToast();
   const [clients, setClients] = useState<Client[]>([]);
@@ -45,19 +43,17 @@ export default function ClientDirectory() {
   const [isSaving, setIsSaving] = useState(false);
 
   const fetchClients = useCallback(async () => {
-    if (!supabase || !publicKey) {
+    if (!supabase || !user?.id) {
       setIsLoading(false);
       return;
     }
 
     try {
       setIsLoading(true);
-      const ownerKey = user?.id || publicKey.toBase58();
-      const ownerColumn = user ? "auth_user_id" : "user_address";
       const { data } = await supabase
         .from("clients")
         .select("*")
-        .eq(ownerColumn, ownerKey)
+        .eq("auth_user_id", user.id)
         .order("name");
 
       if (data) setClients(data);
@@ -66,23 +62,22 @@ export default function ClientDirectory() {
     } finally {
       setIsLoading(false);
     }
-  }, [publicKey, toast, user]);
+  }, [toast, user]);
 
   useEffect(() => {
-    if (publicKey && isAuthenticated) {
+    if (user?.id && isAuthenticated) {
       void fetchClients();
     }
-  }, [fetchClients, isAuthenticated, publicKey]);
+  }, [fetchClients, isAuthenticated, user]);
 
   const saveClient = async () => {
-    if (!publicKey || !newName || !supabase || !isAuthenticated) return;
+    if (!newName || !supabase || !isAuthenticated || !user?.id) return;
 
     try {
       setIsSaving(true);
       const { error } = await supabase.from("clients").insert([
         {
-          auth_user_id: user?.id,
-          user_address: publicKey.toBase58(),
+          auth_user_id: user.id,
           name: newName,
           email: newEmail,
           address: newAddress,
@@ -138,10 +133,6 @@ export default function ClientDirectory() {
         </div>
         <button
           onClick={() => {
-            if (!connected) {
-              toast("Connect your wallet first to add clients.", "info");
-              return;
-            }
             if (!isAuthenticated) {
               toast("Sign in with your wallet before saving clients.", "info");
               return;
@@ -165,7 +156,7 @@ export default function ClientDirectory() {
         />
       </div>
 
-      {(!connected || !isAuthenticated) && (
+      {!isAuthenticated && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -185,7 +176,7 @@ export default function ClientDirectory() {
         </motion.div>
       )}
 
-      {connected && isAuthenticated && (
+      {isAuthenticated && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence mode="popLayout">
             {filteredClients.map((client) => (

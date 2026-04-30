@@ -23,6 +23,8 @@ import {
   type PaymentToken,
 } from "@/lib/payment-utils";
 import { getOrigin } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
+import { VERTEX_NETWORK } from "@/lib/config";
 
 const TOKEN_OPTIONS: { value: PaymentToken; label: string; color: string }[] = [
   { value: "SOL", label: "SOL", color: "bg-gradient-to-r from-[#9945FF] to-[#14F195] text-white" },
@@ -32,12 +34,13 @@ const TOKEN_OPTIONS: { value: PaymentToken; label: string; color: string }[] = [
 
 export default function GetPaidPage() {
   const { publicKey, connected } = useWallet();
-  const { isAuthenticated } = useSession();
+  const { isAuthenticated, user } = useSession();
   const [amount, setAmount] = useState("");
   const [token, setToken] = useState<PaymentToken>("SOL");
   const [description, setDescription] = useState("");
   const [manualWallet, setManualWallet] = useState("");
   const [copied, setCopied] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const effectiveWallet = connected
     ? publicKey?.toBase58() ?? ""
@@ -66,6 +69,40 @@ export default function GetPaidPage() {
     await navigator.clipboard.writeText(generatedLink);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2000);
+  };
+
+  const savePaymentLink = async () => {
+    if (!supabase || !isAuthenticated || !user || !generatedLink) return;
+
+    try {
+      setIsSaving(true);
+      const id = generatedLink.split("/pay/")[1];
+      await supabase.from("payment_requests").upsert(
+        {
+          id,
+          auth_user_id: user.id,
+          source: "direct",
+          label: description || `Direct ${token} payment link`,
+          description: description || null,
+          network: VERTEX_NETWORK,
+          recipient_wallet: effectiveWallet,
+          amount: numericAmount,
+          token,
+          memo: null,
+          fee_bps: breakdown.feeBps,
+          payment_status: "sent",
+        },
+        {
+          onConflict: "id",
+        }
+      );
+
+      await navigator.clipboard.writeText(generatedLink);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -235,6 +272,12 @@ export default function GetPaidPage() {
                     Open Link
                   </button>
                 </div>
+
+                {isAuthenticated && (
+                  <button onClick={savePaymentLink} className="vertex-btn-outline w-full" disabled={isSaving}>
+                    {isSaving ? "Saving..." : "Save to Dashboard"}
+                  </button>
+                )}
 
                 <div className="pt-6 border-t border-white/5 space-y-2">
                   <p className="text-white font-bold text-sm">What the client sees</p>

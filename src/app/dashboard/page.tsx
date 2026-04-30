@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
 import { motion } from "framer-motion";
 import {
   AlertCircle,
@@ -28,6 +27,7 @@ import { WalletAuthButton } from "@/components/WalletAuthButton";
 import { useSession } from "@/components/SessionProvider";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/Toast";
+import { getStatusLabel, mapLegacyInvoiceStatus } from "@/lib/payments";
 
 interface InvoiceRecord {
   id: string;
@@ -37,6 +37,7 @@ interface InvoiceRecord {
   status: string;
   payment_id: string | null;
   created_at: string;
+  kind: "invoice" | "payment_link";
 }
 
 interface InvoiceStat {
@@ -48,8 +49,10 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }>
   draft: { bg: "bg-white/5", text: "text-white/40", label: "Draft" },
   sent: { bg: "bg-white/10", text: "text-white/60", label: "Sent" },
   viewed: { bg: "bg-primary/20", text: "text-primary", label: "Viewed" },
-  payment_pending: { bg: "bg-primary/10", text: "text-primary", label: "Pending" },
-  paid: { bg: "bg-primary", text: "text-black", label: "Paid" },
+  payment_submitted: { bg: "bg-primary/10", text: "text-primary", label: "Submitted" },
+  payment_confirmed: { bg: "bg-primary/20", text: "text-primary", label: "Confirmed" },
+  payment_finalized: { bg: "bg-primary", text: "text-black", label: "Finalized" },
+  payment_failed: { bg: "bg-red-500/20", text: "text-red-400", label: "Failed" },
   overdue: { bg: "bg-red-500/20", text: "text-red-400", label: "Overdue" },
 };
 
@@ -59,9 +62,10 @@ const DEMO_INVOICES: InvoiceRecord[] = [
     invoice_number: "INV-2026-4210",
     total: 2.5,
     token: "SOL",
-    status: "paid",
+    status: "payment_finalized",
     payment_id: null,
     created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
+    kind: "invoice",
   },
   {
     id: "demo-2",
@@ -71,20 +75,21 @@ const DEMO_INVOICES: InvoiceRecord[] = [
     status: "sent",
     payment_id: null,
     created_at: new Date(Date.now() - 86400000).toISOString(),
+    kind: "invoice",
   },
   {
     id: "demo-3",
     invoice_number: "INV-2026-4212",
     total: 1,
     token: "SOL",
-    status: "payment_pending",
+    status: "payment_confirmed",
     payment_id: null,
     created_at: new Date().toISOString(),
+    kind: "payment_link",
   },
 ];
 
 export default function Dashboard() {
-  const { publicKey, connected } = useWallet();
   const { user, isAuthenticated } = useSession();
   const { toast } = useToast();
   const [stats, setStats] = useState({
@@ -92,67 +97,98 @@ export default function Dashboard() {
     activeContracts: 0,
     totalClients: 0,
     pendingPayments: 0,
+    paymentLinks: 0,
   });
   const [recentInvoices, setRecentInvoices] = useState<InvoiceRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const isDemo = !connected || !isAuthenticated;
+  const isDemo = !isAuthenticated;
 
   const fetchDashboardData = useCallback(async () => {
-    if (!supabase || (!user?.id && !publicKey)) {
+    if (!supabase || !user?.id) {
       setIsLoading(false);
       return;
     }
 
     try {
       setIsLoading(true);
-      const ownerKey = user?.id || publicKey?.toBase58();
-      const ownerColumn = user ? "auth_user_id" : "user_address";
 
       const { data: invData } = await supabase
         .from("invoices")
-        .select("*")
-        .eq(ownerColumn, ownerKey)
+        .select("id, invoice_number, total, token, status, payment_id, created_at")
+        .eq("auth_user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      const { data: paymentLinkData } = await supabase
+        .from("payment_requests")
+        .select("id, label, amount, token, payment_status, created_at")
+        .eq("auth_user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(5);
 
       const { count: contractCount } = await supabase
         .from("contracts")
         .select("*", { count: "exact", head: true })
-        .eq(ownerColumn, ownerKey);
+        .eq("auth_user_id", user.id);
 
       const { count: clientCount } = await supabase
         .from("clients")
         .select("*", { count: "exact", head: true })
-        .eq(ownerColumn, ownerKey);
+        .eq("auth_user_id", user.id);
+
+      const { count: paymentLinkCount } = await supabase
+        .from("payment_requests")
+        .select("*", { count: "exact", head: true })
+        .eq("auth_user_id", user.id);
 
       const { data: allInvoices } = await supabase
         .from("invoices")
         .select("total, status")
-        .eq(ownerColumn, ownerKey);
+        .eq("auth_user_id", user.id);
 
       const invoiceStats = (allInvoices as InvoiceStat[] | null) || [];
       const totalInv = invoiceStats
-        .filter((item) => item.status === "paid")
+        .filter((item) => mapLegacyInvoiceStatus(item.status) === "payment_finalized")
         .reduce((sum, item) => sum + Number(item.total), 0);
       const totalPending = invoiceStats
-        .filter((item) => item.status !== "paid")
+        .filter((item) => mapLegacyInvoiceStatus(item.status) !== "payment_finalized")
         .reduce((sum, item) => sum + Number(item.total), 0);
 
-      if (invData) setRecentInvoices(invData as InvoiceRecord[]);
+      const invoiceRows: InvoiceRecord[] = (invData || []).map((invoice) => ({
+        ...(invoice as Omit<InvoiceRecord, "kind">),
+        kind: "invoice",
+      }));
+      const paymentRows: InvoiceRecord[] = (paymentLinkData || []).map((paymentLink) => ({
+        id: paymentLink.id as string,
+        invoice_number: (paymentLink.label as string) || "Direct payment link",
+        total: Number(paymentLink.amount),
+        token: paymentLink.token as string,
+        status: paymentLink.payment_status as string,
+        payment_id: paymentLink.id as string,
+        created_at: paymentLink.created_at as string,
+        kind: "payment_link",
+      }));
+
+      setRecentInvoices(
+        [...invoiceRows, ...paymentRows]
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(0, 8)
+      );
 
       setStats({
         totalInvoiced: totalInv,
         activeContracts: contractCount || 0,
         totalClients: clientCount || 0,
         pendingPayments: totalPending,
+        paymentLinks: paymentLinkCount || 0,
       });
     } catch {
       toast("Failed to load dashboard data. Please try again.", "error");
     } finally {
       setIsLoading(false);
     }
-  }, [publicKey, toast, user]);
+  }, [toast, user]);
 
   useEffect(() => {
     if (isDemo) {
@@ -162,6 +198,7 @@ export default function Dashboard() {
         activeContracts: 2,
         totalClients: 3,
         pendingPayments: 1,
+        paymentLinks: 2,
       });
       setIsLoading(false);
       return;
@@ -171,13 +208,14 @@ export default function Dashboard() {
   }, [fetchDashboardData, isDemo]);
 
   const getStatusBadge = (status: string) => {
-    const style = STATUS_STYLES[status] || STATUS_STYLES.payment_pending;
+    const normalizedStatus = mapLegacyInvoiceStatus(status);
+    const style = STATUS_STYLES[normalizedStatus] || STATUS_STYLES.draft;
     return (
       <span
         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${style.bg} ${style.text}`}
       >
-        {status === "paid" && <CheckCircle2 className="w-2.5 h-2.5 mr-1" />}
-        {style.label}
+        {normalizedStatus === "payment_finalized" && <CheckCircle2 className="w-2.5 h-2.5 mr-1" />}
+        {getStatusLabel(normalizedStatus)}
       </span>
     );
   };
@@ -322,10 +360,11 @@ export default function Dashboard() {
                       </div>
                       <div>
                         <p className="text-base font-black text-white tracking-tight">
-                          #{invoice.invoice_number}
+                          {invoice.kind === "invoice" ? "#" : ""}
+                          {invoice.invoice_number}
                         </p>
                         <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest opacity-40">
-                          {new Date(invoice.created_at).toLocaleDateString()}
+                          {invoice.kind === "payment_link" ? "Payment link" : "Invoice"} · {new Date(invoice.created_at).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
