@@ -40,4 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.vercel
+# ai metadata
+.agents/
+.claude/
+.superstack/
+skills-lock.json
