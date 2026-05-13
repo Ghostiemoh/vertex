@@ -5,7 +5,7 @@ export type VertexNetwork = "devnet" | "mainnet-beta";
 const rawNetwork = process.env.NEXT_PUBLIC_SOLANA_NETWORK;
 
 export const VERTEX_NETWORK: VertexNetwork =
-  rawNetwork === "mainnet-beta" ? "mainnet-beta" : "devnet";
+  rawNetwork === "devnet" ? "devnet" : "mainnet-beta";
 
 export const IS_DEVNET = VERTEX_NETWORK === "devnet";
 export const NETWORK_LABEL = IS_DEVNET ? "Devnet sandbox" : "Mainnet production";

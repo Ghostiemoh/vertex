@@ -116,7 +116,7 @@ export default function VerifyPage() {
       
       if (err instanceof Error) {
         if (err.message.includes("Failed to fetch") || err.message.includes("408")) {
-          message = "Solana Devnet is currently under high load. Transaction retrieval may be delayed. Please try again in a few moments.";
+          message = "The Solana network is currently under high load. Transaction retrieval may be delayed. Please try again in a few moments.";
         } else {
           message = err.message;
         }
