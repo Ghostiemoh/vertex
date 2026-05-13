@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { WalletContextProvider } from "@/components/WalletContextProvider";
 import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 import { ToastProvider } from "@/components/Toast";
 import { SessionProvider } from "@/components/SessionProvider";
 
@@ -24,6 +25,7 @@ export default function RootLayout({
             <SessionProvider>
               <Navbar />
               <main className="flex-grow">{children}</main>
+              <Footer />
             </SessionProvider>
           </ToastProvider>
         </WalletContextProvider>

@@ -482,12 +482,12 @@ The Company and the Freelancer are collectively referred to as the “Parties”
               <div className="space-y-4">
                 {deliverables.map((d) => (
                   <div key={d.id} className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl space-y-3 relative group">
-                    <button onClick={() => removeDeliverable(d.id)} className="absolute right-2 top-2 p-1.5 text-white/10 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all cursor-pointer">
+                    <button onClick={() => removeDeliverable(d.id)} title="Remove Deliverable" aria-label="Remove Deliverable" className="absolute right-2 top-2 p-1.5 text-white/10 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all cursor-pointer">
                       <Trash2 className="w-3 h-3" />
                     </button>
                     <div className="grid grid-cols-[1fr_120px] gap-3">
                       <input type="text" placeholder="Deliverable Name" value={d.name} onChange={(e) => updateDeliverable(d.id, "name", e.target.value)} className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none text-sm" />
-                      <select value={d.type} onChange={(e) => updateDeliverable(d.id, "type", e.target.value as Deliverable["type"])} className="bg-white/5 border border-white/10 rounded-xl px-2 py-3 text-white text-xs outline-none cursor-pointer">
+                      <select value={d.type} title="Deliverable Type" aria-label="Deliverable Type" onChange={(e) => updateDeliverable(d.id, "type", e.target.value as Deliverable["type"])} className="bg-white/5 border border-white/10 rounded-xl px-2 py-3 text-white text-xs outline-none cursor-pointer">
                         <option value="One-Time" className="bg-[#0f1115]">One-Time</option>
                         <option value="Recurring" className="bg-[#0f1115]">Recurring</option>
                       </select>
@@ -683,7 +683,7 @@ The Company and the Freelancer are collectively referred to as the “Parties”
                   <div className="flex flex-col items-center">
                     <div className="flex gap-[1px]">
                       {[...Array(35)].map((_, i) => (
-                        <div key={i} className="bg-black" style={{ width: (i % 3 === 0 ? '1.5px' : '0.5px'), height: '20px' }} />
+                        <div key={i} className={`bg-black h-5 ${i % 3 === 0 ? "w-[1.5px]" : "w-[0.5px]"}`} />
                       ))}
                     </div>
                     <span className="text-[7px] text-zinc-400 mt-1 font-mono">{contractId}</span>
