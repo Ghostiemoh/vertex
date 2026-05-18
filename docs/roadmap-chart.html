@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vertex Roadmap Chart</title>
+    <style>
+      :root {
+        --bg: #080a09;
+        --panel: #101411;
+        --panel-2: #161b18;
+        --border: #27332c;
+        --text: #f3fff7;
+        --muted: #9fb0a6;
+        --primary: #00c853;
+        --primary-soft: rgba(0, 200, 83, 0.18);
+        --blue: #6da8ff;
+        --amber: #f6c85f;
+        --rose: #ff7b8a;
+        --grid: rgba(255, 255, 255, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        color: var(--text);
+        background:
+          linear-gradient(180deg, rgba(0, 200, 83, 0.08), transparent 34rem),
+          radial-gradient(circle at top right, rgba(109, 168, 255, 0.14), transparent 26rem),
+          var(--bg);
+      }
+
+      main {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 48px 0;
+      }
+
+      header {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 24px;
+        align-items: end;
+        margin-bottom: 28px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2.2rem, 6vw, 5rem);
+        line-height: 0.92;
+        letter-spacing: 0;
+      }
+
+      .eyebrow {
+        margin: 0 0 12px;
+        color: var(--primary);
+        font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+      }
+
+      .subtitle {
+        max-width: 720px;
+        margin: 16px 0 0;
+        color: var(--muted);
+        font-size: 1rem;
+        line-height: 1.6;
+      }
+
+      .target {
+        min-width: 210px;
+        padding: 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: rgba(16, 20, 17, 0.8);
+      }
+
+      .target span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+      }
+
+      .target strong {
+        display: block;
+        margin-top: 6px;
+        color: var(--primary);
+        font-size: 1.45rem;
+      }
+
+      .chart {
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: rgba(16, 20, 17, 0.82);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+      }
+
+      .months,
+      .track {
+        display: grid;
+        grid-template-columns: repeat(136, minmax(4px, 1fr));
+      }
+
+      .months {
+        padding: 18px 18px 12px 180px;
+        border-bottom: 1px solid var(--border);
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+        font-size: 0.75rem;
+        background:
+          repeating-linear-gradient(
+            to right,
+            transparent 0,
+            transparent calc((100% / 136) * 6),
+            var(--grid) calc((100% / 136) * 6),
+            var(--grid) calc((100% / 136) * 7)
+          );
+      }
+
+      .month {
+        padding-left: 8px;
+      }
+
+      .may {
+        grid-column: 1 / span 14;
+      }
+
+      .jun {
+        grid-column: 15 / span 30;
+      }
+
+      .jul {
+        grid-column: 45 / span 31;
+      }
+
+      .aug {
+        grid-column: 76 / span 31;
+      }
+
+      .sep {
+        grid-column: 107 / span 30;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        min-height: 82px;
+        border-bottom: 1px solid rgba(39, 51, 44, 0.75);
+      }
+
+      .row:last-child {
+        border-bottom: 0;
+      }
+
+      .label {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 6px;
+        padding: 16px 18px;
+        border-right: 1px solid var(--border);
+        background: rgba(8, 10, 9, 0.48);
+      }
+
+      .label strong {
+        font-size: 0.95rem;
+      }
+
+      .label span {
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+
+      .track {
+        position: relative;
+        align-items: center;
+        padding: 18px;
+        background:
+          repeating-linear-gradient(
+            to right,
+            transparent 0,
+            transparent calc((100% / 136) * 6),
+            var(--grid) calc((100% / 136) * 6),
+            var(--grid) calc((100% / 136) * 7)
+          );
+      }
+
+      .bar {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 8px;
+        color: white;
+        font-size: 0.86rem;
+        line-height: 1.2;
+      }
+
+      .bar span {
+        color: rgba(255, 255, 255, 0.74);
+        font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+        font-size: 0.72rem;
+        white-space: nowrap;
+      }
+
+      .p1 {
+        grid-column: 1 / span 14;
+        background: linear-gradient(135deg, #00c853, #088d42);
+        color: #041008;
+      }
+
+      .p1 span {
+        color: rgba(4, 16, 8, 0.72);
+      }
+
+      .p2 {
+        grid-column: 15 / span 14;
+        background: linear-gradient(135deg, #1fbf75, #197d52);
+      }
+
+      .p3 {
+        grid-column: 29 / span 16;
+        background: linear-gradient(135deg, #6da8ff, #345ca8);
+      }
+
+      .p4 {
+        grid-column: 45 / span 14;
+        background: linear-gradient(135deg, #f6c85f, #a66f16);
+        color: #160f03;
+      }
+
+      .p4 span {
+        color: rgba(22, 15, 3, 0.72);
+      }
+
+      .p5 {
+        grid-column: 59 / span 32;
+        background: linear-gradient(135deg, #00c853, #286bff);
+      }
+
+      .p6 {
+        grid-column: 91 / span 46;
+        background: linear-gradient(135deg, #ff7b8a, #7b4dff);
+      }
+
+      .milestones {
+        margin-top: 18px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+
+      .milestone {
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: rgba(22, 27, 24, 0.72);
+      }
+
+      .milestone time {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--primary);
+        font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+        font-size: 0.76rem;
+      }
+
+      .milestone strong {
+        display: block;
+        font-size: 0.92rem;
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 16px;
+        color: var(--muted);
+        font-size: 0.84rem;
+      }
+
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--primary);
+      }
+
+      .dot.blue {
+        background: var(--blue);
+      }
+
+      .dot.amber {
+        background: var(--amber);
+      }
+
+      .dot.rose {
+        background: var(--rose);
+      }
+
+      .links {
+        margin-top: 22px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      a,
+      button {
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 14px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        background: var(--panel-2);
+        text-decoration: none;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      a:focus-visible,
+      button:focus-visible {
+        outline: 2px solid var(--primary);
+        outline-offset: 3px;
+      }
+
+      button.primary {
+        border-color: var(--primary);
+        color: #041008;
+        background: var(--primary);
+      }
+
+      @media (max-width: 820px) {
+        main {
+          width: min(100% - 24px, 640px);
+          padding: 28px 0;
+        }
+
+        header {
+          grid-template-columns: 1fr;
+          align-items: start;
+        }
+
+        .chart {
+          border: 0;
+          background: transparent;
+          box-shadow: none;
+        }
+
+        .months {
+          display: none;
+        }
+
+        .row {
+          grid-template-columns: 1fr;
+          min-height: 0;
+          margin-bottom: 12px;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          background: rgba(16, 20, 17, 0.82);
+        }
+
+        .label {
+          border-right: 0;
+          border-bottom: 1px solid var(--border);
+        }
+
+        .track {
+          display: block;
+          padding: 14px;
+          background: none;
+        }
+
+        .bar {
+          width: 100%;
+        }
+
+        .milestones {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media print {
+        body {
+          background: #080a09;
+        }
+
+        .links {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">Vertex roadmap</p>
+          <h1>Execution Timeline</h1>
+          <p class="subtitle">
+            The path from reliable settlement to private beta and growth:
+            invoice finality first, then professional workflow, then mainnet trust.
+          </p>
+        </div>
+        <aside class="target" aria-label="Primary operating target">
+          <span>First operating target</span>
+          <strong>$5k + 10 users</strong>
+        </aside>
+      </header>
+
+      <section class="chart" aria-label="Vertex roadmap timeline chart">
+        <div class="months" aria-hidden="true">
+          <div class="month may">May</div>
+          <div class="month jun">June</div>
+          <div class="month jul">July</div>
+          <div class="month aug">August</div>
+          <div class="month sep">September</div>
+        </div>
+
+        <div class="row">
+          <div class="label">
+            <strong>Phase 1</strong>
+            <span>Verification Reliability</span>
+          </div>
+          <div class="track">
+            <div class="bar p1"><strong>Payment lifecycle hardened</strong><span>May 18-31</span></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="label">
+            <strong>Phase 2</strong>
+            <span>Invoice Workflow Polish</span>
+          </div>
+          <div class="track">
+            <div class="bar p2"><strong>Invoice workflow polished</strong><span>Jun 1-14</span></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="label">
+            <strong>Phase 3</strong>
+            <span>Contract-to-Invoice Linking</span>
+          </div>
+          <div class="track">
+            <div class="bar p3"><strong>Agreement-to-settlement linked</strong><span>Jun 15-30</span></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="label">
+            <strong>Phase 4</strong>
+            <span>Mainnet Readiness</span>
+          </div>
+          <div class="track">
+            <div class="bar p4"><strong>Production trust layer</strong><span>Jul 1-14</span></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="label">
+            <strong>Phase 5</strong>
+            <span>Private Beta</span>
+          </div>
+          <div class="track">
+            <div class="bar p5"><strong>10 active freelancers</strong><span>Jul 15-Aug 15</span></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="label">
+            <strong>Phase 6</strong>
+            <span>Growth and Differentiation</span>
+          </div>
+          <div class="track">
+            <div class="bar p6"><strong>Monetization experiment</strong><span>Aug 16-Sep 30</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="milestones" aria-label="Roadmap milestone cards">
+        <div class="milestone"><time>May 31</time><strong>Payment lifecycle hardened</strong></div>
+        <div class="milestone"><time>June 14</time><strong>Invoice workflow polished</strong></div>
+        <div class="milestone"><time>June 30</time><strong>Agreement-to-settlement linked</strong></div>
+        <div class="milestone"><time>July 14</time><strong>Mainnet-ready launch</strong></div>
+        <div class="milestone"><time>August 15</time><strong>10 beta freelancers</strong></div>
+        <div class="milestone"><time>September 30</time><strong>Monetization experiment</strong></div>
+      </section>
+
+      <div class="legend" aria-label="Chart legend">
+        <span><i class="dot"></i> Core settlement</span>
+        <span><i class="dot blue"></i> Product workflow</span>
+        <span><i class="dot amber"></i> Production trust</span>
+        <span><i class="dot rose"></i> Growth</span>
+      </div>
+
+      <nav class="links" aria-label="Roadmap links">
+        <a href="./ROADMAP.md">Open roadmap Markdown</a>
+        <button class="primary" type="button" onclick="window.print()">Print chart</button>
+      </nav>
+    </main>
+  </body>
+</html>

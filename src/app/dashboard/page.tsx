@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import useSWR from "swr";
 import { motion } from "framer-motion";
 import {
@@ -44,6 +44,7 @@ interface InvoiceRecord {
 interface InvoiceStat {
   total: number;
   status: string;
+  token: string;
 }
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
@@ -129,16 +130,27 @@ export default function Dashboard() {
 
     const { data: allInvoices } = await supabase
       .from("invoices")
-      .select("total, status")
+      .select("total, status, token")
       .eq("auth_user_id", user.id);
 
     const invoiceStats = (allInvoices as InvoiceStat[] | null) || [];
-    const totalInv = invoiceStats
-      .filter((item) => mapLegacyInvoiceStatus(item.status) === "payment_finalized")
-      .reduce((sum, item) => sum + Number(item.total), 0);
-    const totalPending = invoiceStats
-      .filter((item) => mapLegacyInvoiceStatus(item.status) !== "payment_finalized")
-      .reduce((sum, item) => sum + Number(item.total), 0);
+    const finalizedByToken: Record<string, number> = {};
+    const pendingByToken: Record<string, number> = {};
+    for (const item of invoiceStats) {
+      const tk = item.token || "SOL";
+      const amount = Number(item.total);
+      if (mapLegacyInvoiceStatus(item.status) === "payment_finalized") {
+        finalizedByToken[tk] = (finalizedByToken[tk] || 0) + amount;
+      } else {
+        pendingByToken[tk] = (pendingByToken[tk] || 0) + amount;
+      }
+    }
+    const formatTokenMap = (map: Record<string, number>) => {
+      const parts = Object.entries(map)
+        .filter(([, v]) => v > 0)
+        .map(([tk, v]) => `${tk === "SOL" ? v.toFixed(4) : v.toFixed(2)} ${tk}`);
+      return parts.length > 0 ? parts.join(" · ") : "0";
+    };
 
     const invoiceRows = (invData || []).map((invoice) => ({
       ...(invoice),
@@ -160,10 +172,10 @@ export default function Dashboard() {
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, 8),
       stats: {
-        totalInvoiced: totalInv,
+        totalInvoiced: formatTokenMap(finalizedByToken),
         activeContracts: contractCount || 0,
         totalClients: clientCount || 0,
-        pendingPayments: totalPending,
+        pendingPayments: formatTokenMap(pendingByToken),
         paymentLinks: paymentLinkCount || 0,
       }
     };
@@ -183,16 +195,16 @@ export default function Dashboard() {
 
   const recentInvoices = isDemo ? DEMO_INVOICES : (data?.recentInvoices || []);
   const stats = isDemo ? {
-    totalInvoiced: 3.5,
+    totalInvoiced: "2.5000 SOL",
     activeContracts: 2,
     totalClients: 3,
-    pendingPayments: 1,
+    pendingPayments: "500.00 USDC · 1.0000 SOL",
     paymentLinks: 2,
   } : (data?.stats || {
-    totalInvoiced: 0,
+    totalInvoiced: "0",
     activeContracts: 0,
     totalClients: 0,
-    pendingPayments: 0,
+    pendingPayments: "0",
     paymentLinks: 0,
   });
   const isLoading = !isDemo && swrLoading;
@@ -266,7 +278,7 @@ export default function Dashboard() {
         {[
           {
             label: "Revenue received",
-            value: `${stats.totalInvoiced} SOL`,
+            value: stats.totalInvoiced,
             icon: TrendingUp,
             color: "text-emerald-500",
             rawColor: "#10b981",
@@ -287,7 +299,7 @@ export default function Dashboard() {
           },
           {
             label: "Awaiting payment",
-            value: `${stats.pendingPayments} SOL`,
+            value: stats.pendingPayments,
             icon: Clock,
             color: "text-orange-500",
             rawColor: "#f59e0b",
@@ -310,7 +322,7 @@ export default function Dashboard() {
               <p className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-2">
                 {stat.label}
               </p>
-              <h3 className="text-3xl font-black text-white tracking-tighter">
+              <h3 className={`font-black text-white tracking-tighter leading-tight ${String(stat.value).length > 10 ? "text-xl" : "text-3xl"}`}>
                 {stat.value}
               </h3>
             </div>

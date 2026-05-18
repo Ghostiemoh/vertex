@@ -12,6 +12,7 @@ import { useToast } from "@/components/Toast";
 import { type PaymentToken } from "@/lib/payment-utils";
 import QRCode from "qrcode";
 import { getCanonicalUrl } from "@/lib/utils";
+import { NETWORK_LABEL } from "@/lib/config";
 import { useSession } from "@/components/SessionProvider";
 
 type ContractPdf = jsPDF & {
@@ -85,7 +86,7 @@ export default function ContractPage() {
     fetchPrices();
   }, []);
 
-  const contractId = useMemo(() => `LMNR-CTR-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`, []);
+  const contractId = useMemo(() => `VTX-CTR-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`, []);
 
   useEffect(() => {
     if (effectiveWallet) {
@@ -330,7 +331,7 @@ The Company and the Freelancer are collectively referred to as the “Parties”
         doc.setFont("times", "bold");
         doc.text("Network:", margin, cursorY);
         doc.setFont("times", "normal");
-        doc.text("Solana Mainnet", margin + 35, cursorY);
+        doc.text(NETWORK_LABEL, margin + 35, cursorY);
         cursorY += 12;
   
         doc.setFont("times", "bold");
@@ -658,7 +659,7 @@ The Company and the Freelancer are collectively referred to as the “Parties”
                       </div>
                       <div>
                         <p className="font-bold text-black">Network:</p>
-                        <p className="text-zinc-500">Solana Mainnet</p>
+                        <p className="text-zinc-500">{NETWORK_LABEL}</p>
                       </div>
                     </div>
                     <div className="space-y-3">

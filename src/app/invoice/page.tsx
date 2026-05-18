@@ -8,7 +8,7 @@ import { Download, Send, Plus, Trash2, User, Building, Calendar, Hash, Loader2, 
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { encodePaymentRequest, type PaymentToken } from "@/lib/payment-utils";
-import { VERTEX_NETWORK } from "@/lib/config";
+import { VERTEX_NETWORK, NETWORK_LABEL } from "@/lib/config";
 import { getOrigin } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/Toast";
@@ -263,7 +263,7 @@ export default function InvoicePage() {
     doc.setFontSize(10);
     doc.setFont("times", "normal");
     doc.setTextColor(...darkGray);
-    doc.text(`Accepted Networks: Solana / Base / Polygon`, margin, cursorY);
+    doc.text(`Network: Solana (${NETWORK_LABEL})`, margin, cursorY);
     cursorY += 5;
     doc.text(`Preferred Token: ${token}`, margin, cursorY);
     cursorY += 6;
@@ -373,7 +373,7 @@ export default function InvoicePage() {
         }]);
       }
     } catch {
-      console.error("Invoice saved locally but failed to sync to cloud");
+      // Non-critical: local PDF is already generated
     }
     
     return { doc, paymentLink, signatureBase58, encoded };

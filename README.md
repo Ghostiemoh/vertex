@@ -76,5 +76,8 @@ npm run dev
 - **Security Protocols**: Narrow server routes for public payment links; explicit UI labeling for Sandbox (Devnet) vs Production (Mainnet).
 - **Asset Integrity**: PDF generation with verification hashes embedded for audit trails.
 
+## Roadmap
+- [Vertex Roadmap](./docs/ROADMAP.md)
+
 ---
 *Built with precision on Solana.*
