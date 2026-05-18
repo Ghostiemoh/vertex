@@ -3,6 +3,8 @@
 **Roadmap date:** May 18, 2026  
 **Product thesis:** Vertex is the professional settlement layer for Solana freelancers: agreement, invoice, payment link, verification, and business record in one precise workflow.
 
+> **Daily operating doc:** For the full A-to-Z founder operating system — including bug backlog, brand/domain/email setup, social playbook, content cadence, growth, partnerships, KPIs, launch, monetization, and weekly schedule — see [FOUNDER_OS.md](./FOUNDER_OS.md). This roadmap stays focused on product scope and phase ship lists.
+
 ---
 
 ## North Star

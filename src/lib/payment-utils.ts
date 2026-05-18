@@ -136,6 +136,12 @@ export function decodePaymentRequest(encoded: string): PaymentRequest | null {
   }
 }
 
+export function toAtomicUnits(amount: number, token: PaymentToken): number {
+  const decimals = getTokenDecimals(token);
+  const fixed = amount.toFixed(decimals);
+  return parseInt(fixed.replace(".", ""), 10);
+}
+
 export function formatTokenAmount(amount: number, token: PaymentToken): string {
   const decimals = token === "SOL" ? 4 : 2;
   return `${amount.toFixed(decimals)} ${token}`;

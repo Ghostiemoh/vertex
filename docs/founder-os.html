@@ -1,0 +1,1474 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vertex — Founder OS</title>
+    <style>
+      :root {
+        --bg: #050706;
+        --bg-2: #0a0d0b;
+        --panel: #0e1311;
+        --panel-2: #131915;
+        --panel-3: #1a221d;
+        --border: #1f2a23;
+        --border-strong: #2c3a31;
+        --text: #f3fff7;
+        --text-2: #d6e7dc;
+        --muted: #8aa094;
+        --muted-2: #5d6f66;
+        --primary: #00c853;
+        --primary-2: #00e060;
+        --primary-soft: rgba(0, 200, 83, 0.14);
+        --primary-glow: rgba(0, 200, 83, 0.35);
+        --amber: #f6c85f;
+        --rose: #ff5470;
+        --blue: #6da8ff;
+        --grid: rgba(255, 255, 255, 0.04);
+        --mono: ui-monospace, "JetBrains Mono", SFMono-Regular, Consolas, monospace;
+        --sans: "Inter Tight", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+
+      html { scroll-behavior: smooth; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: var(--sans);
+        color: var(--text);
+        background:
+          radial-gradient(ellipse at top, rgba(0, 200, 83, 0.10), transparent 50rem),
+          radial-gradient(ellipse at bottom right, rgba(109, 168, 255, 0.06), transparent 40rem),
+          var(--bg);
+        -webkit-font-smoothing: antialiased;
+        line-height: 1.5;
+      }
+
+      ::selection { background: var(--primary); color: #000; }
+
+      /* ===== Layout ===== */
+      main {
+        width: min(1280px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 32px 0 96px;
+      }
+
+      /* ===== Top Bar ===== */
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 20px;
+        margin-bottom: 32px;
+        background: rgba(14, 19, 17, 0.7);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        position: sticky;
+        top: 12px;
+        z-index: 50;
+      }
+
+      .topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .logo {
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 0.95rem;
+        letter-spacing: 0.04em;
+      }
+
+      .logo span { color: var(--primary); }
+
+      .nav {
+        display: flex;
+        gap: 6px;
+      }
+
+      .nav a {
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        color: var(--muted);
+        text-decoration: none;
+        padding: 6px 10px;
+        border-radius: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        transition: all 0.2s ease;
+        cursor: pointer;
+      }
+
+      .nav a:hover {
+        color: var(--text);
+        background: var(--panel-2);
+      }
+
+      .topbar-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .clock {
+        font-family: var(--mono);
+        font-size: 0.78rem;
+        color: var(--muted);
+        text-align: right;
+      }
+
+      .clock strong {
+        display: block;
+        color: var(--primary);
+        font-size: 0.9rem;
+      }
+
+      /* ===== Hero ===== */
+      .hero {
+        margin-bottom: 28px;
+      }
+
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        color: var(--primary);
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        margin-bottom: 12px;
+      }
+
+      .hero h1 {
+        margin: 0;
+        font-size: clamp(2.4rem, 6vw, 4.6rem);
+        font-weight: 800;
+        line-height: 0.95;
+        letter-spacing: -0.02em;
+      }
+
+      .hero h1 em {
+        font-style: italic;
+        color: var(--primary);
+      }
+
+      .hero-sub {
+        max-width: 780px;
+        margin: 18px 0 0;
+        color: var(--muted);
+        font-size: 1.05rem;
+      }
+
+      /* ===== Status Strip ===== */
+      .status-strip {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin: 28px 0 0;
+      }
+
+      @media (max-width: 880px) {
+        .status-strip { grid-template-columns: repeat(2, 1fr); }
+      }
+
+      .stat {
+        padding: 18px 18px 16px;
+        background: linear-gradient(135deg, rgba(0, 200, 83, 0.05), transparent 60%), var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .stat::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0;
+        height: 2px;
+        width: 100%;
+        background: linear-gradient(90deg, var(--primary), transparent);
+      }
+
+      .stat-label {
+        font-family: var(--mono);
+        font-size: 0.68rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: 8px;
+      }
+
+      .stat-value {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: var(--text);
+        line-height: 1.1;
+      }
+
+      .stat-value.mono {
+        font-family: var(--mono);
+      }
+
+      .stat-sub {
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+
+      /* ===== Section ===== */
+      section {
+        margin-top: 44px;
+        scroll-margin-top: 90px;
+      }
+
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 18px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .section-head h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+
+      .section-head .meta {
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      /* ===== Phase Timeline ===== */
+      .timeline {
+        position: relative;
+        padding: 20px 0 12px;
+      }
+
+      .timeline-rail {
+        position: absolute;
+        top: 30px;
+        left: 0; right: 0;
+        height: 2px;
+        background: var(--border);
+      }
+
+      .timeline-progress {
+        position: absolute;
+        top: 30px;
+        left: 0;
+        height: 2px;
+        background: linear-gradient(90deg, var(--primary), var(--primary-2));
+        box-shadow: 0 0 12px var(--primary-glow);
+        transition: width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+      }
+
+      .timeline-phases {
+        display: grid;
+        grid-template-columns: 1.1fr 1.1fr 1.1fr 1.1fr 2.2fr 1.5fr;
+        gap: 8px;
+        position: relative;
+      }
+
+      @media (max-width: 880px) {
+        .timeline-rail, .timeline-progress { display: none; }
+        .timeline-phases { grid-template-columns: 1fr 1fr; }
+      }
+
+      .phase {
+        padding: 18px 14px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        position: relative;
+        transition: all 0.3s ease;
+      }
+
+      .phase::before {
+        content: '';
+        position: absolute;
+        top: -6px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 10px; height: 10px;
+        border-radius: 50%;
+        background: var(--border);
+        border: 2px solid var(--bg);
+      }
+
+      .phase.done { opacity: 0.5; }
+      .phase.done::before { background: var(--muted); }
+
+      .phase.active {
+        background: linear-gradient(135deg, rgba(0, 200, 83, 0.08), transparent 70%), var(--panel);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 1px var(--primary), 0 8px 32px rgba(0, 200, 83, 0.15);
+      }
+
+      .phase.active::before {
+        background: var(--primary);
+        box-shadow: 0 0 0 4px rgba(0, 200, 83, 0.2), 0 0 16px var(--primary-glow);
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%, 100% { box-shadow: 0 0 0 4px rgba(0, 200, 83, 0.2), 0 0 16px var(--primary-glow); }
+        50% { box-shadow: 0 0 0 8px rgba(0, 200, 83, 0.1), 0 0 24px var(--primary-glow); }
+      }
+
+      .phase-id {
+        font-family: var(--mono);
+        font-size: 0.7rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+
+      .phase.active .phase-id { color: var(--primary); }
+
+      .phase-title {
+        font-size: 0.92rem;
+        font-weight: 600;
+        margin: 6px 0 4px;
+        line-height: 1.25;
+      }
+
+      .phase-window {
+        font-family: var(--mono);
+        font-size: 0.7rem;
+        color: var(--muted);
+      }
+
+      .phase-progress-mini {
+        margin-top: 10px;
+        height: 3px;
+        background: var(--border);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+
+      .phase-progress-mini > div {
+        height: 100%;
+        background: var(--primary);
+        border-radius: 999px;
+        transition: width 0.6s ease;
+      }
+
+      /* ===== Grid Layout for Cards ===== */
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .grid-2 { grid-template-columns: 1fr 1fr; }
+      .grid-3 { grid-template-columns: repeat(3, 1fr); }
+      .grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+      @media (max-width: 980px) {
+        .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      }
+
+      .card {
+        padding: 22px;
+        background: linear-gradient(180deg, var(--panel) 0%, var(--bg-2) 100%);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+      }
+
+      .card-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+
+      .card-head h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 600;
+      }
+
+      .card-head .tag {
+        font-family: var(--mono);
+        font-size: 0.66rem;
+        padding: 3px 8px;
+        border-radius: 4px;
+        background: var(--primary-soft);
+        color: var(--primary);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .card-head .tag.amber { background: rgba(246, 200, 95, 0.14); color: var(--amber); }
+      .card-head .tag.rose { background: rgba(255, 84, 112, 0.14); color: var(--rose); }
+      .card-head .tag.muted { background: var(--panel-2); color: var(--muted); }
+
+      /* ===== Today Card ===== */
+      .today-card {
+        background:
+          radial-gradient(circle at top right, rgba(0, 200, 83, 0.18), transparent 60%),
+          linear-gradient(180deg, var(--panel) 0%, var(--bg-2) 100%);
+        border: 1px solid var(--primary);
+        border-radius: 14px;
+        padding: 28px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .today-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at top right, var(--primary-glow), transparent 70%);
+        opacity: 0.3;
+        pointer-events: none;
+      }
+
+      .today-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 20px;
+      }
+
+      .today-eyebrow {
+        font-family: var(--mono);
+        font-size: 0.7rem;
+        color: var(--primary);
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        margin-bottom: 8px;
+      }
+
+      .today-title {
+        font-size: 2rem;
+        font-weight: 800;
+        margin: 0;
+        line-height: 1.05;
+      }
+
+      .today-badge {
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        padding: 6px 12px;
+        background: var(--primary);
+        color: #000;
+        border-radius: 6px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+      }
+
+      .today-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-top: 20px;
+      }
+
+      @media (max-width: 720px) {
+        .today-grid { grid-template-columns: 1fr; }
+      }
+
+      .today-col h4 {
+        font-family: var(--mono);
+        font-size: 0.7rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin: 0 0 10px;
+      }
+
+      .today-task {
+        padding: 10px 14px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        font-size: 0.92rem;
+      }
+
+      /* ===== Week Strip ===== */
+      .week-strip {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+      }
+
+      @media (max-width: 720px) {
+        .week-strip { grid-template-columns: repeat(7, 1fr); gap: 4px; }
+      }
+
+      .day {
+        padding: 14px 10px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        text-align: center;
+        position: relative;
+        transition: all 0.3s ease;
+      }
+
+      .day.past { opacity: 0.4; }
+      .day.past .day-num { text-decoration: line-through; }
+
+      .day.today {
+        background: linear-gradient(135deg, rgba(0, 200, 83, 0.18), transparent 70%), var(--panel);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 1px var(--primary), 0 8px 24px rgba(0, 200, 83, 0.2);
+      }
+
+      .day-name {
+        font-family: var(--mono);
+        font-size: 0.64rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .day.today .day-name { color: var(--primary); }
+
+      .day-num {
+        font-family: var(--mono);
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin: 6px 0 4px;
+        line-height: 1;
+      }
+
+      .day.today .day-num { color: var(--primary); }
+
+      .day-task {
+        font-size: 0.72rem;
+        color: var(--muted-2);
+        margin-top: 6px;
+        min-height: 32px;
+        line-height: 1.3;
+      }
+
+      .day.today .day-task { color: var(--text-2); }
+
+      .day-pulse {
+        position: absolute;
+        top: -4px; right: -4px;
+        width: 10px; height: 10px;
+        border-radius: 50%;
+        background: var(--primary);
+        box-shadow: 0 0 12px var(--primary-glow);
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      /* ===== Checklist ===== */
+      .checklist {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .checklist li {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(31, 42, 35, 0.6);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .checklist li:last-child { border-bottom: 0; }
+
+      .checklist li:hover { color: var(--text); }
+
+      .checklist input[type="checkbox"] {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 16px; height: 16px;
+        min-width: 16px;
+        margin-top: 3px;
+        border: 1.5px solid var(--border-strong);
+        border-radius: 4px;
+        background: var(--bg);
+        cursor: pointer;
+        position: relative;
+        transition: all 0.2s ease;
+      }
+
+      .checklist input[type="checkbox"]:hover {
+        border-color: var(--primary);
+      }
+
+      .checklist input[type="checkbox"]:checked {
+        background: var(--primary);
+        border-color: var(--primary);
+      }
+
+      .checklist input[type="checkbox"]:checked::after {
+        content: '';
+        position: absolute;
+        left: 4px; top: 0px;
+        width: 5px; height: 10px;
+        border: solid #000;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+      }
+
+      .checklist label {
+        font-size: 0.88rem;
+        color: var(--text-2);
+        cursor: pointer;
+        flex: 1;
+        line-height: 1.45;
+      }
+
+      .checklist input[type="checkbox"]:checked + label {
+        color: var(--muted-2);
+        text-decoration: line-through;
+        text-decoration-color: var(--muted-2);
+      }
+
+      /* ===== KPI Table ===== */
+      .kpi-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .kpi-table th, .kpi-table td {
+        text-align: left;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.86rem;
+      }
+
+      .kpi-table th {
+        font-family: var(--mono);
+        font-size: 0.68rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 500;
+      }
+
+      .kpi-table td.mono { font-family: var(--mono); }
+      .kpi-table td.target { color: var(--primary); font-weight: 600; }
+
+      .kpi-bar {
+        width: 100%;
+        height: 4px;
+        background: var(--border);
+        border-radius: 999px;
+        overflow: hidden;
+        margin-top: 4px;
+      }
+
+      .kpi-bar > div {
+        height: 100%;
+        background: var(--primary);
+        border-radius: 999px;
+      }
+
+      /* ===== Pill List ===== */
+      .pill-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .pill {
+        font-family: var(--mono);
+        font-size: 0.74rem;
+        padding: 6px 12px;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--text-2);
+      }
+
+      .pill.primary { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
+      .pill.amber { background: rgba(246, 200, 95, 0.12); border-color: rgba(246, 200, 95, 0.4); color: var(--amber); }
+      .pill.rose { background: rgba(255, 84, 112, 0.12); border-color: rgba(255, 84, 112, 0.4); color: var(--rose); }
+
+      /* ===== Content posting cadence ===== */
+      .cadence-list {
+        list-style: none;
+        padding: 0; margin: 0;
+      }
+
+      .cadence-list li {
+        display: grid;
+        grid-template-columns: 80px 1fr;
+        gap: 14px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border);
+        align-items: center;
+      }
+
+      .cadence-list li:last-child { border-bottom: 0; }
+
+      .cadence-time {
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        color: var(--primary);
+        font-weight: 600;
+      }
+
+      .cadence-desc {
+        font-size: 0.88rem;
+        color: var(--text-2);
+      }
+
+      .cadence-desc small {
+        display: block;
+        color: var(--muted);
+        font-size: 0.74rem;
+        margin-top: 2px;
+      }
+
+      /* ===== Risk Table ===== */
+      .risk-row {
+        display: grid;
+        grid-template-columns: 1fr 80px 80px;
+        gap: 8px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border);
+        align-items: center;
+        font-size: 0.84rem;
+      }
+
+      .risk-row:last-child { border-bottom: 0; }
+
+      .risk-row .name { color: var(--text-2); }
+
+      .risk-dot {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-family: var(--mono);
+        font-size: 0.66rem;
+        text-align: center;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .risk-dot.low { background: rgba(0, 200, 83, 0.14); color: var(--primary); }
+      .risk-dot.med { background: rgba(246, 200, 95, 0.14); color: var(--amber); }
+      .risk-dot.high { background: rgba(255, 84, 112, 0.14); color: var(--rose); }
+      .risk-dot.crit { background: var(--rose); color: #000; }
+
+      /* ===== Footer ===== */
+      footer {
+        margin-top: 80px;
+        padding-top: 28px;
+        border-top: 1px solid var(--border);
+        text-align: center;
+        color: var(--muted);
+        font-family: var(--mono);
+        font-size: 0.74rem;
+      }
+
+      footer em { color: var(--primary); font-style: normal; }
+
+      /* ===== Utility ===== */
+      .mono { font-family: var(--mono); }
+      .muted { color: var(--muted); }
+      .primary { color: var(--primary); }
+      .right { text-align: right; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <!-- TOP BAR -->
+      <nav class="topbar">
+        <div class="topbar-left">
+          <div class="logo">VERTEX<span>/</span>OS</div>
+          <div class="nav">
+            <a href="#today">Today</a>
+            <a href="#phases">Phases</a>
+            <a href="#week">Week</a>
+            <a href="#backlog">Backlog</a>
+            <a href="#kpi">KPI</a>
+            <a href="#content">Content</a>
+            <a href="#risks">Risks</a>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <div class="clock">
+            <span id="clock-date">—</span>
+            <strong id="clock-time">—</strong>
+          </div>
+        </div>
+      </nav>
+
+      <!-- HERO -->
+      <header class="hero">
+        <div class="eyebrow">Founder Operating System · v1</div>
+        <h1>The surgical <em>point of finality</em>.</h1>
+        <p class="hero-sub">
+          The complete A-to-Z execution playbook for Vertex. Marks where you are. Updates daily.
+          Open this every morning. Close it every night. Ship something every day.
+        </p>
+
+        <div class="status-strip">
+          <div class="stat">
+            <div class="stat-label">Current Phase</div>
+            <div class="stat-value" id="stat-phase">—</div>
+            <div class="stat-sub" id="stat-phase-sub">—</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Phase Progress</div>
+            <div class="stat-value mono" id="stat-progress">—</div>
+            <div class="stat-sub" id="stat-progress-sub">—</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Days to Mainnet</div>
+            <div class="stat-value mono" id="stat-mainnet">—</div>
+            <div class="stat-sub">Target: Jul 14, 2026</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Days to Beta Launch</div>
+            <div class="stat-value mono" id="stat-beta">—</div>
+            <div class="stat-sub">Target: Jul 15, 2026</div>
+          </div>
+        </div>
+      </header>
+
+      <!-- TODAY -->
+      <section id="today">
+        <div class="today-card">
+          <div class="today-head">
+            <div>
+              <div class="today-eyebrow">Today · <span id="today-date">—</span></div>
+              <h2 class="today-title" id="today-headline">—</h2>
+            </div>
+            <span class="today-badge" id="today-badge">DAY —</span>
+          </div>
+          <div class="today-grid">
+            <div class="today-col">
+              <h4>AM · BUILD</h4>
+              <div class="today-task" id="today-build">—</div>
+            </div>
+            <div class="today-col">
+              <h4>PM · DISTRIBUTE</h4>
+              <div class="today-task" id="today-distribute">—</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PHASES -->
+      <section id="phases">
+        <div class="section-head">
+          <h2>Execution Phases</h2>
+          <span class="meta">May 18 → Sep 30 · 2026</span>
+        </div>
+
+        <div class="timeline">
+          <div class="timeline-rail"></div>
+          <div class="timeline-progress" id="timeline-progress"></div>
+          <div class="timeline-phases" id="timeline-phases">
+            <!-- phases injected by JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- WEEK -->
+      <section id="week">
+        <div class="section-head">
+          <h2>This Week</h2>
+          <span class="meta" id="week-meta">—</span>
+        </div>
+
+        <div class="week-strip" id="week-strip">
+          <!-- days injected by JS -->
+        </div>
+      </section>
+
+      <!-- BACKLOG -->
+      <section id="backlog">
+        <div class="section-head">
+          <h2>Phase 0 — Stabilization Backlog</h2>
+          <span class="meta">Run in parallel with P1 · Persists locally</span>
+        </div>
+
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-head">
+              <h3>Tier 1 · Bug / Reliability</h3>
+              <span class="tag rose">By May 31</span>
+            </div>
+            <ul class="checklist" data-store="bugs-t1">
+              <li><input type="checkbox" id="b1"><label for="b1">Verification idempotency: repeated POSTs do not double-write <span class="mono">payment_events</span></label></li>
+              <li><input type="checkbox" id="b2"><label for="b2">Status drift: dashboard totals restricted to <span class="mono">status = 'finalized'</span></label></li>
+              <li><input type="checkbox" id="b3"><label for="b3">RPC failover: Helius primary + public fallback, log every retry</label></li>
+              <li><input type="checkbox" id="b4"><label for="b4">Token mint mismatch: USDC devnet vs mainnet validated server-side</label></li>
+              <li><input type="checkbox" id="b5"><label for="b5">Memo validation: enforce expected memo, reject on missing/malformed</label></li>
+              <li><input type="checkbox" id="b6"><label for="b6">Wallet disconnect mid-flow: graceful reset, no orphan state</label></li>
+              <li><input type="checkbox" id="b7"><label for="b7">Email send failures: surface error, allow retry, record attempts</label></li>
+              <li><input type="checkbox" id="b8"><label for="b8">PDF metadata: tx signature, network, finality status all embedded</label></li>
+              <li><input type="checkbox" id="b9"><label for="b9">CSRF / origin checks on <span class="mono">/api/email-invoice</span></label></li>
+              <li><input type="checkbox" id="b10"><label for="b10">Race condition audit: invoice → email → status ordering</label></li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Tier 2 · UX Polish</h3>
+              <span class="tag amber">By Jun 14</span>
+            </div>
+            <ul class="checklist" data-store="ux-t2">
+              <li><input type="checkbox" id="u1"><label for="u1">Empty states for invoices, clients, contracts, payments</label></li>
+              <li><input type="checkbox" id="u2"><label for="u2">Loading skeletons (not spinners) for dashboard cards</label></li>
+              <li><input type="checkbox" id="u3"><label for="u3">Form validation messages match brand voice — terse, technical</label></li>
+              <li><input type="checkbox" id="u4"><label for="u4"><span class="mono">cursor: pointer</span> audit across every clickable surface</label></li>
+              <li><input type="checkbox" id="u5"><label for="u5">Spring physics on every modal, hover, page transition</label></li>
+              <li><input type="checkbox" id="u6"><label for="u6">Mobile responsiveness on invoice builder + payment link</label></li>
+              <li><input type="checkbox" id="u7"><label for="u7">Sandbox / Production label unmissable on every payment surface</label></li>
+              <li><input type="checkbox" id="u8"><label for="u8">Toast system: success, error, info, on-chain confirmation — distinct</label></li>
+              <li><input type="checkbox" id="u9"><label for="u9">Keyboard navigation (Tab, Enter, Esc) on every form</label></li>
+              <li><input type="checkbox" id="u10"><label for="u10">Lighthouse: LCP &lt; 1s, CLS &lt; 0.05 on home + payment link</label></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="grid grid-2" style="margin-top:16px;">
+          <div class="card">
+            <div class="card-head">
+              <h3>Infrastructure · Setup Track</h3>
+              <span class="tag">By Jul 14</span>
+            </div>
+            <ul class="checklist" data-store="infra">
+              <li><input type="checkbox" id="i1"><label for="i1">Domain registered (vertex.cash / .io / .so) — Namecheap + Cloudflare</label></li>
+              <li><input type="checkbox" id="i2"><label for="i2">Google Workspace: muhammad@, hello@, support@, security@, noreply@</label></li>
+              <li><input type="checkbox" id="i3"><label for="i3">DKIM, SPF, DMARC configured</label></li>
+              <li><input type="checkbox" id="i4"><label for="i4">PostHog instrumented with 8 funnel events</label></li>
+              <li><input type="checkbox" id="i5"><label for="i5">Plausible (or Umami) live for marketing analytics</label></li>
+              <li><input type="checkbox" id="i6"><label for="i6">Sentry wired for client + server, source maps uploading</label></li>
+              <li><input type="checkbox" id="i7"><label for="i7">Status page at status.vertex.cash</label></li>
+              <li><input type="checkbox" id="i8"><label for="i8">Helius RPC paid tier configured</label></li>
+              <li><input type="checkbox" id="i9"><label for="i9">CSO comprehensive scan — clean</label></li>
+              <li><input type="checkbox" id="i10"><label for="i10">Legal pages live: Terms, Privacy, Refund/Dispute</label></li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Brand & Social · Setup Track</h3>
+              <span class="tag">By Jun 7</span>
+            </div>
+            <ul class="checklist" data-store="brand">
+              <li><input type="checkbox" id="s1"><label for="s1">Logo system: wordmark, icon, monochrome, dark/light</label></li>
+              <li><input type="checkbox" id="s2"><label for="s2">OpenGraph image (1200×630) + Twitter card</label></li>
+              <li><input type="checkbox" id="s3"><label for="s3">Favicon set (16, 32, 180, 512)</label></li>
+              <li><input type="checkbox" id="s4"><label for="s4">@vertex_cash X account claimed + optimized</label></li>
+              <li><input type="checkbox" id="s5"><label for="s5">@Ghostiemoh bio updated, pinned demo post</label></li>
+              <li><input type="checkbox" id="s6"><label for="s6">LinkedIn Vertex Company Page</label></li>
+              <li><input type="checkbox" id="s7"><label for="s7">Farcaster /vertex channel</label></li>
+              <li><input type="checkbox" id="s8"><label for="s8">YouTube channel branded, 3 video topics queued</label></li>
+              <li><input type="checkbox" id="s9"><label for="s9">Typefully account, daily posting queue active</label></li>
+              <li><input type="checkbox" id="s10"><label for="s10">60s demo video for landing hero</label></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- KPI -->
+      <section id="kpi">
+        <div class="section-head">
+          <h2>KPI Dashboard</h2>
+          <span class="meta">Update daily · Review Sundays</span>
+        </div>
+
+        <div class="card">
+          <table class="kpi-table">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th class="right">Current</th>
+                <th class="right">30d Target</th>
+                <th class="right">90d Target</th>
+                <th>Progress</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Total finalized volume</td>
+                <td class="mono right">$0</td>
+                <td class="mono right">$1,000</td>
+                <td class="mono right target">$5,000</td>
+                <td><div class="kpi-bar"><div style="width:0%"></div></div></td>
+              </tr>
+              <tr>
+                <td>Active freelancers (7d)</td>
+                <td class="mono right">0</td>
+                <td class="mono right">3</td>
+                <td class="mono right target">10</td>
+                <td><div class="kpi-bar"><div style="width:0%"></div></div></td>
+              </tr>
+              <tr>
+                <td>Invoices created</td>
+                <td class="mono right">0</td>
+                <td class="mono right">15</td>
+                <td class="mono right target">50</td>
+                <td><div class="kpi-bar"><div style="width:0%"></div></div></td>
+              </tr>
+              <tr>
+                <td>Invoices finalized</td>
+                <td class="mono right">0</td>
+                <td class="mono right">10</td>
+                <td class="mono right target">30</td>
+                <td><div class="kpi-bar"><div style="width:0%"></div></div></td>
+              </tr>
+              <tr>
+                <td>Avg time-to-finality</td>
+                <td class="mono right">—</td>
+                <td class="mono right">&lt;60s</td>
+                <td class="mono right target">&lt;30s</td>
+                <td><div class="kpi-bar"><div style="width:0%"></div></div></td>
+              </tr>
+              <tr>
+                <td>Failed payment rate</td>
+                <td class="mono right">—</td>
+                <td class="mono right">&lt;10%</td>
+                <td class="mono right target">&lt;5%</td>
+                <td><div class="kpi-bar"><div style="width:0%"></div></div></td>
+              </tr>
+              <tr>
+                <td>@vertex_cash followers</td>
+                <td class="mono right">0</td>
+                <td class="mono right">300</td>
+                <td class="mono right target">1,000</td>
+                <td><div class="kpi-bar"><div style="width:0%"></div></div></td>
+              </tr>
+              <tr>
+                <td>Blog visits / mo</td>
+                <td class="mono right">0</td>
+                <td class="mono right">500</td>
+                <td class="mono right target">2,000</td>
+                <td><div class="kpi-bar"><div style="width:0%"></div></div></td>
+              </tr>
+              <tr>
+                <td>Beta cohort signups</td>
+                <td class="mono right">0</td>
+                <td class="mono right">5</td>
+                <td class="mono right target">10</td>
+                <td><div class="kpi-bar"><div style="width:0%"></div></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- CONTENT -->
+      <section id="content">
+        <div class="section-head">
+          <h2>Content & Distribution Engine</h2>
+          <span class="meta">3-5 X posts/day · 1 long-form/week · 1 blog/week</span>
+        </div>
+
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-head">
+              <h3>Daily X Cadence (WAT)</h3>
+              <span class="tag">Use Premium long-form</span>
+            </div>
+            <ul class="cadence-list">
+              <li>
+                <span class="cadence-time">08:00</span>
+                <div class="cadence-desc">Morning ship update<small>Catches US night owls + EU morning</small></div>
+              </li>
+              <li>
+                <span class="cadence-time">12:00</span>
+                <div class="cadence-desc">Educational thread / long-form essay<small>EU lunch + US morning peak</small></div>
+              </li>
+              <li>
+                <span class="cadence-time">16:00</span>
+                <div class="cadence-desc">Engagement: quote-tweets, replies, hot takes<small>Builds graph</small></div>
+              </li>
+              <li>
+                <span class="cadence-time">20:00</span>
+                <div class="cadence-desc">Evening recap / behind-the-scenes / asset<small>US afternoon prime</small></div>
+              </li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Weekly Content Rotation</h3>
+              <span class="tag muted">Mon → Sun</span>
+            </div>
+            <ul class="cadence-list">
+              <li><span class="cadence-time">Mon</span><div class="cadence-desc">Week ahead — what's shipping</div></li>
+              <li><span class="cadence-time">Tue</span><div class="cadence-desc">Educational deep-dive (long-form essay)</div></li>
+              <li><span class="cadence-time">Wed</span><div class="cadence-desc">Build update with visuals</div></li>
+              <li><span class="cadence-time">Thu</span><div class="cadence-desc">Case study / competitor analysis</div></li>
+              <li><span class="cadence-time">Fri</span><div class="cadence-desc">Founder POV essay / weekend reading</div></li>
+              <li><span class="cadence-time">Sat</span><div class="cadence-desc">Replies, engagement, light asset</div></li>
+              <li><span class="cadence-time">Sun</span><div class="cadence-desc">Week-in-numbers public KPI post</div></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <div class="card-head">
+            <h3>Long-Form Essay Queue (Premium · 800–1500 words)</h3>
+            <span class="tag">1 per week · Tuesdays</span>
+          </div>
+          <div class="pill-list">
+            <span class="pill primary">1 · Why finality is the only number that matters</span>
+            <span class="pill">2 · The hidden cost of getting paid in crypto</span>
+            <span class="pill">3 · Building a payment verification engine on Solana</span>
+            <span class="pill">4 · The freelancer's invoice problem isn't crypto — it's trust</span>
+            <span class="pill">5 · Glassmorphism, spring physics, and the cockpit feel</span>
+            <span class="pill">6 · Why I'm building Vertex solo</span>
+            <span class="pill">7 · On-chain agreements: the missing layer</span>
+            <span class="pill">8 · What 10 beta freelancers taught me in 30 days</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- GROWTH -->
+      <section id="growth">
+        <div class="section-head">
+          <h2>Growth Channels — First $1K Volume</h2>
+          <span class="meta">5 invoices × $200 avg · Target Jul 31</span>
+        </div>
+
+        <div class="grid grid-3">
+          <div class="card">
+            <div class="card-head">
+              <h3>Priority Channels</h3>
+              <span class="tag">P1</span>
+            </div>
+            <ul class="checklist" data-store="growth-p1">
+              <li><input type="checkbox" id="g1"><label for="g1">Founder X presence + daily outreach</label></li>
+              <li><input type="checkbox" id="g2"><label for="g2">Superteam Nigeria — 10 DMs/week</label></li>
+              <li><input type="checkbox" id="g3"><label for="g3">Superteam global (LATAM, VN, IN, DE, UAE)</label></li>
+              <li><input type="checkbox" id="g4"><label for="g4">Solana Foundation grant application</label></li>
+              <li><input type="checkbox" id="g5"><label for="g5">Solana Twitter search outreach</label></li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>The 5 Invoices</h3>
+              <span class="tag amber">$1K plan</span>
+            </div>
+            <ul class="checklist" data-store="invoices-5">
+              <li><input type="checkbox" id="inv1"><label for="inv1">#1 Self-issued to real client ($50 fee — skin in game)</label></li>
+              <li><input type="checkbox" id="inv2"><label for="inv2">#2 Superteam Nigeria member — DM 5, close 1</label></li>
+              <li><input type="checkbox" id="inv3"><label for="inv3">#3 Twitter inbound from build-in-public</label></li>
+              <li><input type="checkbox" id="inv4"><label for="inv4">#4 Cold outreach — email 20, close 1</label></li>
+              <li><input type="checkbox" id="inv5"><label for="inv5">#5 Friendly agency invoices real client</label></li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Partnership Targets</h3>
+              <span class="tag">Phase 6+</span>
+            </div>
+            <div class="pill-list">
+              <span class="pill">Superteam NG</span>
+              <span class="pill">Solana Foundation</span>
+              <span class="pill">SendAI</span>
+              <span class="pill">Phantom</span>
+              <span class="pill">Solflare</span>
+              <span class="pill">Backpack</span>
+              <span class="pill">Circle</span>
+              <span class="pill">Helio</span>
+              <span class="pill">Replit Bounties</span>
+              <span class="pill">Layer3</span>
+              <span class="pill">Cointracker</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RISKS -->
+      <section id="risks">
+        <div class="section-head">
+          <h2>Risk Register</h2>
+          <span class="meta">Review monthly</span>
+        </div>
+
+        <div class="card">
+          <div class="risk-row" style="font-family: var(--mono); font-size: 0.66rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid var(--border-strong);">
+            <span>Risk</span><span style="text-align:center;">Prob</span><span style="text-align:center;">Impact</span>
+          </div>
+          <div class="risk-row">
+            <span class="name">RPC outage during mainnet payment</span>
+            <span class="risk-dot med">MED</span>
+            <span class="risk-dot high">HIGH</span>
+          </div>
+          <div class="risk-row">
+            <span class="name">USDC depeg event</span>
+            <span class="risk-dot low">LOW</span>
+            <span class="risk-dot high">HIGH</span>
+          </div>
+          <div class="risk-row">
+            <span class="name">Supabase RLS misconfiguration leaks data</span>
+            <span class="risk-dot med">MED</span>
+            <span class="risk-dot crit">CRIT</span>
+          </div>
+          <div class="risk-row">
+            <span class="name">Solo founder burnout</span>
+            <span class="risk-dot med">MED</span>
+            <span class="risk-dot high">HIGH</span>
+          </div>
+          <div class="risk-row">
+            <span class="name">Zero PMF after beta</span>
+            <span class="risk-dot med">MED</span>
+            <span class="risk-dot high">HIGH</span>
+          </div>
+          <div class="risk-row">
+            <span class="name">Competitor ships exact feature</span>
+            <span class="risk-dot med">MED</span>
+            <span class="risk-dot med">MED</span>
+          </div>
+          <div class="risk-row">
+            <span class="name">Solana network outage</span>
+            <span class="risk-dot low">LOW</span>
+            <span class="risk-dot high">HIGH</span>
+          </div>
+          <div class="risk-row">
+            <span class="name">Beta user gets defrauded (sandbox/prod confusion)</span>
+            <span class="risk-dot low">LOW</span>
+            <span class="risk-dot crit">CRIT</span>
+          </div>
+          <div class="risk-row">
+            <span class="name">Domain expires / DNS hijack</span>
+            <span class="risk-dot low">LOW</span>
+            <span class="risk-dot high">HIGH</span>
+          </div>
+          <div class="risk-row">
+            <span class="name">GitHub repo / secret compromise</span>
+            <span class="risk-dot low">LOW</span>
+            <span class="risk-dot crit">CRIT</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- DECISION RULES -->
+      <section id="rules">
+        <div class="section-head">
+          <h2>Decision Rules — When You're Stuck</h2>
+          <span class="meta">Defaults · No exceptions without reason</span>
+        </div>
+
+        <div class="grid grid-2">
+          <div class="card">
+            <ol style="margin:0; padding-left:20px; color:var(--text-2); line-height:1.8;">
+              <li><strong>Reliability &gt; features.</strong> Every time.</li>
+              <li><strong>One user &gt; ten signups.</strong> Talk to settlers.</li>
+              <li><strong>Volume &gt; vanity.</strong> $100 settled beats 10K followers.</li>
+              <li><strong>Ship daily &gt; ship perfectly.</strong> Velocity is the moat.</li>
+              <li><strong>Build in public &gt; build in private.</strong> Even embarrassing.</li>
+            </ol>
+          </div>
+          <div class="card">
+            <ol start="6" style="margin:0; padding-left:20px; color:var(--text-2); line-height:1.8;">
+              <li><strong>Say no faster.</strong> Most asks decline or defer.</li>
+              <li><strong>Distribution is half the product.</strong> Schedule like code.</li>
+              <li><strong>Charge before you're ready.</strong> Money = cleanest feedback.</li>
+              <li><strong>Talk to 5 users before any new feature.</strong> Always.</li>
+              <li><strong>If two paths exist, take the reversible one first.</strong></li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <div>VERTEX <em>/</em> FOUNDER OS · Generated 2026-05-18 · See <a href="./FOUNDER_OS.md" style="color:var(--primary);">FOUNDER_OS.md</a> for full text</div>
+        <div style="margin-top:8px; opacity:0.6;">Open every morning. Close every night. Ship something. Talk to a user. Post something.</div>
+      </footer>
+    </main>
+
+    <script>
+      // =====================================================
+      // VERTEX FOUNDER OS — Live Position Engine
+      // =====================================================
+
+      const PHASES = [
+        { id: 'P0', name: 'Stabilization Backlog', start: '2026-05-18', end: '2026-05-31', kind: 'overlay' },
+        { id: 'P1', name: 'Verification Reliability', start: '2026-05-18', end: '2026-05-31' },
+        { id: 'P2', name: 'Invoice Workflow Polish', start: '2026-06-01', end: '2026-06-14' },
+        { id: 'P3', name: 'Contract→Invoice Linking', start: '2026-06-15', end: '2026-06-30' },
+        { id: 'P4', name: 'Mainnet Readiness', start: '2026-07-01', end: '2026-07-14' },
+        { id: 'P5', name: 'Private Beta — $5K + 10 users', start: '2026-07-15', end: '2026-08-15' },
+        { id: 'P6', name: 'Growth & Monetization', start: '2026-08-16', end: '2026-09-30' },
+      ];
+
+      const WEEK1 = {
+        '2026-05-18': { name: 'Mon', build: 'Audit /api/payments/verify for idempotency; add Vitest cases', distribute: 'Post: "Week ahead — shipping verification reliability." Set up Typefully.' },
+        '2026-05-19': { name: 'Tue', build: 'Implement idempotency lock + retry-safe write', distribute: 'Long-form essay: "Why finality is the only number that matters."' },
+        '2026-05-20': { name: 'Wed', build: 'Add payment_events lifecycle history UI on invoice page', distribute: 'DM 10 Superteam Nigeria members. Screenshot today\'s ship → tweet.' },
+        '2026-05-21': { name: 'Thu', build: 'Status drift fix: dashboard totals = finalized only', distribute: 'Apply to Solana Foundation grant. Draft case study outline.' },
+        '2026-05-22': { name: 'Fri', build: 'RPC failover telemetry + Helius primary setup', distribute: 'Founder POV essay. NO DEPLOYS. Plan weekend content.' },
+        '2026-05-23': { name: 'Sat', build: 'Cleanup: console.log removal, type-safety pass', distribute: 'Engagement: 20 quote-tweets in Solana ecosystem. 10 replies.' },
+        '2026-05-24': { name: 'Sun', build: 'Weekly review + plan Week 2', distribute: 'Week-in-numbers post. Buy domain. Set up Google Workspace.' },
+      };
+
+      const WEEK2 = {
+        '2026-05-25': { name: 'Mon', build: 'Token mint validation hardening (devnet vs mainnet USDC)', distribute: 'Domain DNS live. Email accounts wired up.' },
+        '2026-05-26': { name: 'Tue', build: 'Memo validation enforcement + tests', distribute: 'Long-form essay #2: "The hidden cost of getting paid in crypto."' },
+        '2026-05-27': { name: 'Wed', build: 'Wallet disconnect mid-flow graceful reset', distribute: 'Set up Plausible/PostHog. Instrument 8 funnel events.' },
+        '2026-05-28': { name: 'Thu', build: 'Email send error handling + retry', distribute: 'Reach out to 5 partnership prospects.' },
+        '2026-05-29': { name: 'Fri', build: 'Manual QA scripts: 4 happy paths + 6 failure paths', distribute: 'Status page live. Sentry wired.' },
+        '2026-05-30': { name: 'Sat', build: 'Lighthouse audit + LCP optimization', distribute: 'Engagement day. 20 replies to ecosystem accounts.' },
+        '2026-05-31': { name: 'Sun', build: 'Phase 1 acceptance criteria pass/fail. PHASE 1 COMPLETE.', distribute: 'Week-in-numbers. Plan Week 3 + Phase 2.' },
+      };
+
+      const ALL_DAYS = { ...WEEK1, ...WEEK2 };
+
+      // ===== Helpers =====
+      const toDate = (s) => new Date(s + 'T00:00:00');
+      const fmtDate = (d) => d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+      const fmtShort = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const daysBetween = (a, b) => Math.round((b - a) / (1000 * 60 * 60 * 24));
+      const isoKey = (d) => d.toISOString().slice(0, 10);
+
+      const TODAY = new Date();
+      const todayKey = isoKey(TODAY);
+
+      // ===== Clock =====
+      function updateClock() {
+        const now = new Date();
+        document.getElementById('clock-date').textContent = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        document.getElementById('clock-time').textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      }
+      updateClock();
+      setInterval(updateClock, 30000);
+
+      // ===== Current Phase =====
+      const corePhases = PHASES.filter(p => p.kind !== 'overlay');
+      let currentPhase = corePhases[0];
+      let currentIdx = 0;
+      for (let i = 0; i < corePhases.length; i++) {
+        const p = corePhases[i];
+        if (TODAY >= toDate(p.start) && TODAY <= toDate(p.end)) {
+          currentPhase = p;
+          currentIdx = i;
+          break;
+        }
+        if (TODAY > toDate(p.end) && i < corePhases.length - 1 && TODAY < toDate(corePhases[i+1].start)) {
+          currentPhase = corePhases[i+1];
+          currentIdx = i+1;
+          break;
+        }
+      }
+
+      const phaseStart = toDate(currentPhase.start);
+      const phaseEnd = toDate(currentPhase.end);
+      const phaseTotalDays = daysBetween(phaseStart, phaseEnd) + 1;
+      const phaseDayNum = Math.max(1, daysBetween(phaseStart, TODAY) + 1);
+      const phaseProgressPct = Math.min(100, Math.round((phaseDayNum / phaseTotalDays) * 100));
+
+      document.getElementById('stat-phase').textContent = currentPhase.id;
+      document.getElementById('stat-phase-sub').textContent = currentPhase.name;
+      document.getElementById('stat-progress').textContent = `${phaseProgressPct}%`;
+      document.getElementById('stat-progress-sub').textContent = `Day ${phaseDayNum} of ${phaseTotalDays}`;
+
+      const mainnetDays = daysBetween(TODAY, toDate('2026-07-14'));
+      const betaDays = daysBetween(TODAY, toDate('2026-07-15'));
+      document.getElementById('stat-mainnet').textContent = mainnetDays > 0 ? mainnetDays : 'NOW';
+      document.getElementById('stat-beta').textContent = betaDays > 0 ? betaDays : 'NOW';
+
+      // ===== Today Card =====
+      document.getElementById('today-date').textContent = fmtDate(TODAY);
+      const todayPlan = ALL_DAYS[todayKey];
+      if (todayPlan) {
+        document.getElementById('today-headline').textContent = `${todayPlan.name} · ${currentPhase.name}`;
+        document.getElementById('today-build').textContent = todayPlan.build;
+        document.getElementById('today-distribute').textContent = todayPlan.distribute;
+        document.getElementById('today-badge').textContent = `DAY ${phaseDayNum}`;
+      } else {
+        document.getElementById('today-headline').textContent = `${currentPhase.name}`;
+        document.getElementById('today-build').textContent = 'Day-by-day schedule not yet defined for this date. See FOUNDER_OS.md Section 22 for milestone-gated guidance.';
+        document.getElementById('today-distribute').textContent = `Currently in ${currentPhase.id}: ${currentPhase.name}. Check ROADMAP.md for shippable scope.`;
+        document.getElementById('today-badge').textContent = `${currentPhase.id} · DAY ${phaseDayNum}`;
+      }
+
+      // ===== Phase Timeline =====
+      const phasesEl = document.getElementById('timeline-phases');
+      const allPhases = corePhases;
+      let timelineHTML = '';
+      allPhases.forEach((p, i) => {
+        let cls = '';
+        if (i < currentIdx) cls = 'done';
+        else if (i === currentIdx) cls = 'active';
+        const pct = i === currentIdx ? phaseProgressPct : (i < currentIdx ? 100 : 0);
+        timelineHTML += `
+          <div class="phase ${cls}">
+            <div class="phase-id">${p.id}${i === currentIdx ? ' · ACTIVE' : ''}</div>
+            <div class="phase-title">${p.name}</div>
+            <div class="phase-window">${fmtShort(toDate(p.start))} → ${fmtShort(toDate(p.end))}</div>
+            <div class="phase-progress-mini"><div style="width:${pct}%"></div></div>
+          </div>`;
+      });
+      phasesEl.innerHTML = timelineHTML;
+
+      // Timeline rail progress
+      const firstStart = toDate(allPhases[0].start);
+      const lastEnd = toDate(allPhases[allPhases.length-1].end);
+      const totalDays = daysBetween(firstStart, lastEnd);
+      const elapsed = Math.max(0, Math.min(totalDays, daysBetween(firstStart, TODAY)));
+      const railPct = Math.min(100, (elapsed / totalDays) * 100);
+      document.getElementById('timeline-progress').style.width = railPct + '%';
+
+      // ===== Week Strip =====
+      // Show current week (Mon-Sun)
+      const mondayOffset = (TODAY.getDay() + 6) % 7;
+      const monday = new Date(TODAY);
+      monday.setDate(TODAY.getDate() - mondayOffset);
+
+      const weekDays = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        weekDays.push(d);
+      }
+
+      document.getElementById('week-meta').textContent = `${fmtShort(weekDays[0])} → ${fmtShort(weekDays[6])}`;
+
+      const weekStrip = document.getElementById('week-strip');
+      let weekHTML = '';
+      weekDays.forEach(d => {
+        const key = isoKey(d);
+        const plan = ALL_DAYS[key];
+        const isToday = key === todayKey;
+        const isPast = d < TODAY && !isToday;
+        const cls = isToday ? 'today' : (isPast ? 'past' : '');
+        weekHTML += `
+          <div class="day ${cls}">
+            ${isToday ? '<div class="day-pulse"></div>' : ''}
+            <div class="day-name">${d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+            <div class="day-num">${d.getDate()}</div>
+            <div class="day-task">${plan ? plan.build.split(';')[0].slice(0, 60) : '—'}</div>
+          </div>`;
+      });
+      weekStrip.innerHTML = weekHTML;
+
+      // ===== Checklist persistence =====
+      document.querySelectorAll('.checklist').forEach(list => {
+        const store = list.dataset.store;
+        const saved = JSON.parse(localStorage.getItem('vertex-os-' + store) || '{}');
+        list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+          if (saved[cb.id]) cb.checked = true;
+          cb.addEventListener('change', () => {
+            const state = JSON.parse(localStorage.getItem('vertex-os-' + store) || '{}');
+            state[cb.id] = cb.checked;
+            localStorage.setItem('vertex-os-' + store, JSON.stringify(state));
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

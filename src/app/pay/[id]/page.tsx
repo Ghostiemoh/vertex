@@ -30,8 +30,8 @@ import { EnvironmentBadge } from "@/components/EnvironmentBadge";
 import { useToast } from "@/components/Toast";
 import {
   calculatePaymentBreakdown,
-  getTokenDecimals,
   getTokenMint,
+  toAtomicUnits,
   type PaymentRequest,
   type PaymentToken,
 } from "@/lib/payment-utils";
@@ -155,7 +155,7 @@ export default function PaymentPage({ params }: PageProps) {
           SystemProgram.transfer({
             fromPubkey: publicKey,
             toPubkey: recipientPubkey,
-            lamports: Math.round(request.amount * 1_000_000_000),
+            lamports: toAtomicUnits(request.amount, "SOL"),
           })
         );
 
@@ -164,7 +164,7 @@ export default function PaymentPage({ params }: PageProps) {
             SystemProgram.transfer({
               fromPubkey: publicKey,
               toPubkey: treasuryPubkey,
-              lamports: Math.round(breakdown.platformFee * 1_000_000_000),
+              lamports: toAtomicUnits(breakdown.platformFee, "SOL"),
             })
           );
         }
@@ -174,7 +174,6 @@ export default function PaymentPage({ params }: PageProps) {
           tokenType,
           request.network === "devnet" ? "devnet" : "mainnet"
         );
-        const decimals = getTokenDecimals(request.token);
         const senderAta = await getAssociatedTokenAddress(mintPubkey, publicKey);
         const recipientAta = await getAssociatedTokenAddress(mintPubkey, recipientPubkey);
 
@@ -196,7 +195,7 @@ export default function PaymentPage({ params }: PageProps) {
             senderAta,
             recipientAta,
             publicKey,
-            Math.round(request.amount * 10 ** decimals)
+            toAtomicUnits(request.amount, request.token)
           )
         );
 
@@ -220,7 +219,7 @@ export default function PaymentPage({ params }: PageProps) {
               senderAta,
               treasuryAta,
               publicKey,
-              Math.round(breakdown.platformFee * 10 ** decimals)
+              toAtomicUnits(breakdown.platformFee, request.token)
             )
           );
         }
@@ -316,6 +315,7 @@ export default function PaymentPage({ params }: PageProps) {
             <div className="flex flex-col gap-4">
               {txHash && (
                 <button
+                  type="button"
                   onClick={() => window.open(getExplorerTxUrl(txHash), "_blank")}
                   className="vertex-btn-outline w-full"
                 >
@@ -323,6 +323,7 @@ export default function PaymentPage({ params }: PageProps) {
                 </button>
               )}
               <button
+                type="button"
                 onClick={() => {
                   window.location.href = "/";
                 }}
@@ -426,6 +427,7 @@ export default function PaymentPage({ params }: PageProps) {
                     </div>
                   ) : (
                     <button
+                      type="button"
                       onClick={handlePayment}
                       disabled={status === "processing"}
                       className="vertex-btn w-full !h-16 !text-lg"

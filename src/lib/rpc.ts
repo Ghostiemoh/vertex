@@ -5,6 +5,7 @@ import {
   SERVER_RPC_ENDPOINT,
   SERVER_RPC_WS_ENDPOINT,
 } from "@/lib/config";
+import { logVertexEvent } from "@/lib/monitoring";
 
 const commitment = "confirmed" as const;
 
@@ -52,7 +53,15 @@ export async function withRpcFallback<T>(
       return await executor(connection);
     } catch (error) {
       lastError = error;
-      console.warn(`[vertex][rpc] ${taskName} failed on ${connection.rpcEndpoint}`, error);
+      logVertexEvent(
+        "rpc_fallback",
+        {
+          taskName,
+          endpoint: connection.rpcEndpoint,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "warn"
+      );
     }
   }
 

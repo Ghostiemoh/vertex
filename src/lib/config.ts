@@ -4,6 +4,12 @@ export type VertexNetwork = "devnet" | "mainnet-beta";
 
 const rawNetwork = process.env.NEXT_PUBLIC_SOLANA_NETWORK;
 
+if (rawNetwork && rawNetwork !== "devnet" && rawNetwork !== "mainnet-beta") {
+  console.warn(
+    `[vertex][config] NEXT_PUBLIC_SOLANA_NETWORK="${rawNetwork}" is not a valid value; defaulting to mainnet-beta. Set it to "devnet" or "mainnet-beta".`
+  );
+}
+
 export const VERTEX_NETWORK: VertexNetwork =
   rawNetwork === "devnet" ? "devnet" : "mainnet-beta";
 
@@ -42,6 +48,12 @@ export const TREASURY_WALLET =
   process.env.VERTEX_TREASURY_WALLET ||
   process.env.NEXT_PUBLIC_VERTEX_TREASURY_WALLET ||
   "43zpDV5PK347E2gqzpv2LJdDRoCwbv2deCBFcRDysFXG";
+
+if (!process.env.VERTEX_TREASURY_WALLET && !process.env.NEXT_PUBLIC_VERTEX_TREASURY_WALLET) {
+  console.warn(
+    "[vertex][config] VERTEX_TREASURY_WALLET is not set — fees will route to the hardcoded fallback address. Set VERTEX_TREASURY_WALLET in your Vercel environment variables."
+  );
+}
 
 export function getExplorerTxUrl(signature: string): string {
   return `https://solscan.io/tx/${signature}?cluster=${SOLSCAN_CLUSTER_PARAM}`;

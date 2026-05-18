@@ -11,6 +11,7 @@ import {
   decodePaymentRequest,
   getTokenDecimals,
   getTokenMint,
+  toAtomicUnits,
   type PaymentRequest,
   type PaymentToken,
 } from "@/lib/payment-utils";
@@ -77,6 +78,29 @@ function normalizePaymentStatus(
   return mapLegacyInvoiceStatus(fallbackStatus);
 }
 
+// Sliding-window rate limiter (per serverless instance).
+// For distributed limiting across all Vercel instances, replace with Upstash Redis.
+const _rateMap = new Map<string, number[]>();
+const RATE_WINDOW_MS = 60_000;
+const RATE_LIMIT = 15;
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const hits = (_rateMap.get(ip) ?? []).filter((t) => t > now - RATE_WINDOW_MS);
+  if (hits.length >= RATE_LIMIT) return true;
+  hits.push(now);
+  _rateMap.set(ip, hits);
+  return false;
+}
+
+class RetriableVerificationError extends Error {
+  readonly retriable = true;
+  constructor(message: string) {
+    super(message);
+    this.name = "RetriableVerificationError";
+  }
+}
+
 async function verifyTransaction(
   request: PaymentRequest,
   signature: string
@@ -88,8 +112,14 @@ async function verifyTransaction(
     })
   );
 
-  if (!tx || tx.meta?.err) {
-    throw new Error("Vertex could not load a successful parsed transaction for verification.");
+  if (!tx) {
+    throw new RetriableVerificationError(
+      "Transaction not found on-chain yet. Please retry in a few seconds."
+    );
+  }
+
+  if (tx.meta?.err) {
+    throw new Error("The transaction failed on-chain and cannot be verified.");
   }
 
   const instructions = tx.transaction.message.instructions;
@@ -109,8 +139,8 @@ async function verifyTransaction(
   }
 
   if (request.token === "SOL") {
-    const lamports = Math.round(request.amount * 1_000_000_000);
-    const feeLamports = Math.round(breakdown.platformFee * 1_000_000_000);
+    const lamports = toAtomicUnits(request.amount, "SOL");
+    const feeLamports = toAtomicUnits(breakdown.platformFee, "SOL");
 
     const recipientTransfer = instructions.some((instruction) => {
       if (!hasParsedInstruction(instruction)) return false;
@@ -146,9 +176,8 @@ async function verifyTransaction(
     const treasuryAta = (
       await getAssociatedTokenAddress(mint, new PublicKey(treasury), true)
     ).toBase58();
-    const unit = 10 ** getTokenDecimals(request.token);
-    const requiredAmount = Math.round(request.amount * unit);
-    const requiredFee = Math.round(breakdown.platformFee * unit);
+    const requiredAmount = toAtomicUnits(request.amount, token);
+    const requiredFee = toAtomicUnits(breakdown.platformFee, token);
 
     const recipientTransfer = instructions.some((instruction) => {
       if (!hasParsedInstruction(instruction)) return false;
@@ -196,14 +225,14 @@ async function appendPaymentEvent(
   details: Record<string, unknown>
 ) {
   const supabaseAdmin = getSupabaseAdmin();
-  if (!supabaseAdmin || !paymentRequest?.auth_user_id) return;
+  if (!supabaseAdmin || (!paymentRequest && !invoice)) return;
 
   await supabaseAdmin.from("payment_events").insert({
-    auth_user_id: paymentRequest.auth_user_id,
-    payment_request_id: paymentRequest.id,
-    invoice_id: invoice?.id ?? paymentRequest.invoice_id,
+    auth_user_id: paymentRequest?.auth_user_id ?? invoice?.auth_user_id ?? null,
+    payment_request_id: paymentRequest?.id ?? null,
+    invoice_id: invoice?.id ?? paymentRequest?.invoice_id ?? null,
     event_type: eventType,
-    status: paymentRequest.payment_status,
+    status: paymentRequest?.payment_status ?? invoice?.status ?? null,
     signature: typeof details.signature === "string" ? details.signature : null,
     details,
   });
@@ -316,7 +345,11 @@ export async function GET(
       invoice.status = "viewed";
     }
 
-    if (paymentRequest?.signature) {
+    if (
+      paymentRequest?.signature &&
+      paymentRequest.confirmation_status === "confirmed" &&
+      !paymentRequest.finalized_at
+    ) {
       paymentRequest = await syncFinality(paymentRequest, invoice);
     }
   }
@@ -362,10 +395,20 @@ export async function POST(
     return NextResponse.json({ error: "Invalid payment link." }, { status: 400 });
   }
 
-  const body = (await req.json()) as { signature?: string };
-  if (!body.signature) {
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  if (isRateLimited(ip)) {
     return NextResponse.json(
-      { error: "Transaction signature is required." },
+      { error: "Too many verification attempts. Please wait a moment." },
+      { status: 429 }
+    );
+  }
+
+  const body = (await req.json()) as { signature?: string };
+  const SIG_REGEX = /^[1-9A-HJ-NP-Za-km-z]{87,88}$/;
+  if (!body.signature || !SIG_REGEX.test(body.signature)) {
+    return NextResponse.json(
+      { error: "Invalid transaction signature format." },
       { status: 400 }
     );
   }
@@ -409,6 +452,36 @@ export async function POST(
       status: paymentRequest.confirmation_status,
       pendingFinality: paymentRequest.confirmation_status !== "finalized",
     });
+  }
+
+  // Set payment_submitted before verification so the dashboard shows in-flight state.
+  // Uses .neq filters to avoid downgrading an already-confirmed/finalized payment.
+  if (supabaseAdmin && paymentRequest) {
+    await supabaseAdmin
+      .from("payment_requests")
+      .update({ payment_status: "payment_submitted", signature: body.signature })
+      .eq("id", id)
+      .neq("payment_status", "payment_confirmed")
+      .neq("payment_status", "payment_finalized");
+
+    if (invoice) {
+      await supabaseAdmin
+        .from("invoices")
+        .update({ status: "payment_submitted" })
+        .eq("id", invoice.id)
+        .neq("status", "payment_confirmed")
+        .neq("status", "payment_finalized");
+    }
+
+    const submittedRequest = {
+      ...paymentRequest,
+      payment_status: "payment_submitted",
+      signature: body.signature,
+    };
+    await appendPaymentEvent(submittedRequest, invoice, "payment_submitted", {
+      signature: body.signature,
+    });
+    paymentRequest = submittedRequest;
   }
 
   try {
@@ -471,17 +544,21 @@ export async function POST(
         ? error.message
         : "Vertex could not verify that transaction.";
 
+    const isRetriable =
+      error instanceof RetriableVerificationError;
+
     logVertexEvent(
       "payment_verification_failed",
       {
         paymentId: id,
         signature: body.signature,
         reason: message,
+        retriable: isRetriable,
       },
-      "error"
+      isRetriable ? "warn" : "error"
     );
 
-    if (supabaseAdmin) {
+    if (!isRetriable && supabaseAdmin) {
       if (paymentRequest) {
         await supabaseAdmin
           .from("payment_requests")
@@ -503,13 +580,16 @@ export async function POST(
           })
           .eq("id", invoice.id);
       }
+
+      await appendPaymentEvent(paymentRequest, invoice, "payment_failed", {
+        signature: body.signature,
+        reason: message,
+      });
     }
 
-    await appendPaymentEvent(paymentRequest, invoice, "payment_failed", {
-      signature: body.signature,
-      reason: message,
-    });
-
-    return NextResponse.json({ error: message }, { status: 422 });
+    return NextResponse.json(
+      { error: message, retriable: isRetriable },
+      { status: isRetriable ? 404 : 422 }
+    );
   }
 }
