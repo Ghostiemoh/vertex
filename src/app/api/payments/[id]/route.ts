@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
-import {
-  type ParsedInstruction,
-  type PartiallyDecodedInstruction,
-  PublicKey,
-  SystemProgram,
-} from "@solana/web3.js";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { getAssociatedTokenAddress } from "@solana/spl-token";
 import {
   calculatePaymentBreakdown,
   decodePaymentRequest,
-  getTokenDecimals,
   getTokenMint,
   toAtomicUnits,
   type PaymentRequest,
@@ -20,6 +14,11 @@ import { TREASURY_WALLET } from "@/lib/config";
 import { logVertexEvent } from "@/lib/monitoring";
 import { mapLegacyInvoiceStatus, type PaymentStatus } from "@/lib/payments";
 import { withRpcFallback } from "@/lib/rpc";
+import { checkRateLimit, extractClientIp } from "@/lib/rate-limit";
+import {
+  hasParsedInstruction,
+  matchesSplTokenTransfer,
+} from "@/lib/spl-token-validation";
 
 interface InvoiceRow {
   id: string;
@@ -63,11 +62,6 @@ interface PaymentRequestRow {
   created_at: string;
 }
 
-function hasParsedInstruction(
-  instruction: ParsedInstruction | PartiallyDecodedInstruction
-): instruction is ParsedInstruction {
-  return "parsed" in instruction;
-}
 
 function normalizePaymentStatus(
   confirmationStatus: "processed" | "confirmed" | "finalized" | null,
@@ -78,20 +72,8 @@ function normalizePaymentStatus(
   return mapLegacyInvoiceStatus(fallbackStatus);
 }
 
-// Sliding-window rate limiter (per serverless instance).
-// For distributed limiting across all Vercel instances, replace with Upstash Redis.
-const _rateMap = new Map<string, number[]>();
-const RATE_WINDOW_MS = 60_000;
-const RATE_LIMIT = 15;
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const hits = (_rateMap.get(ip) ?? []).filter((t) => t > now - RATE_WINDOW_MS);
-  if (hits.length >= RATE_LIMIT) return true;
-  hits.push(now);
-  _rateMap.set(ip, hits);
-  return false;
-}
+const VERIFY_RATE_WINDOW_MS = 60_000;
+const VERIFY_RATE_LIMIT = 15;
 
 class RetriableVerificationError extends Error {
   readonly retriable = true;
@@ -170,6 +152,7 @@ async function verifyTransaction(
   } else {
     const token = request.token as Exclude<PaymentToken, "SOL">;
     const mint = getTokenMint(token, request.network === "devnet" ? "devnet" : "mainnet");
+    const expectedMint = mint.toBase58();
     const recipientAta = (
       await getAssociatedTokenAddress(mint, new PublicKey(recipient), true)
     ).toBase58();
@@ -179,29 +162,35 @@ async function verifyTransaction(
     const requiredAmount = toAtomicUnits(request.amount, token);
     const requiredFee = toAtomicUnits(breakdown.platformFee, token);
 
-    const recipientTransfer = instructions.some((instruction) => {
+    const mintMismatch = instructions.some((instruction) => {
       if (!hasParsedInstruction(instruction)) return false;
       if (instruction.program !== "spl-token") return false;
       const destination = instruction.parsed?.info?.destination;
-      const rawAmount =
-        instruction.parsed?.info?.tokenAmount?.amount ||
-        instruction.parsed?.info?.amount;
-
-      return destination === recipientAta && Number(rawAmount) >= requiredAmount;
+      if (destination !== recipientAta && destination !== treasuryAta) return false;
+      return !matchesSplTokenTransfer(instruction, { expectedMint, expectedDestination: destination, minAmount: 0 });
     });
+
+    if (mintMismatch) {
+      throw new Error("The transaction transferred a token that did not match the requested mint.");
+    }
+
+    const recipientTransfer = instructions.some((instruction) =>
+      matchesSplTokenTransfer(instruction, {
+        expectedMint,
+        expectedDestination: recipientAta,
+        minAmount: requiredAmount,
+      })
+    );
 
     const feeTransfer =
       !breakdown.feeEnabled ||
-      instructions.some((instruction) => {
-        if (!hasParsedInstruction(instruction)) return false;
-        if (instruction.program !== "spl-token") return false;
-        const destination = instruction.parsed?.info?.destination;
-        const rawAmount =
-          instruction.parsed?.info?.tokenAmount?.amount ||
-          instruction.parsed?.info?.amount;
-
-        return destination === treasuryAta && Number(rawAmount) >= requiredFee;
-      });
+      instructions.some((instruction) =>
+        matchesSplTokenTransfer(instruction, {
+          expectedMint,
+          expectedDestination: treasuryAta,
+          minAmount: requiredFee,
+        })
+      );
 
     if (!recipientTransfer || !feeTransfer) {
       throw new Error("The token transfer set did not match the expected recipient or Vertex fee.");
@@ -395,12 +384,19 @@ export async function POST(
     return NextResponse.json({ error: "Invalid payment link." }, { status: 400 });
   }
 
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  if (isRateLimited(ip)) {
+  const ip = extractClientIp(req);
+  const rate = checkRateLimit({
+    key: `verify-payment:${ip}`,
+    limit: VERIFY_RATE_LIMIT,
+    windowMs: VERIFY_RATE_WINDOW_MS,
+  });
+  if (!rate.allowed) {
     return NextResponse.json(
       { error: "Too many verification attempts. Please wait a moment." },
-      { status: 429 }
+      {
+        status: 429,
+        headers: { "Retry-After": Math.ceil(rate.retryAfterMs / 1000).toString() },
+      }
     );
   }
 

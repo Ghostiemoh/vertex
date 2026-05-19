@@ -410,6 +410,50 @@
           display: none;
         }
       }
+
+      /* Today needle */
+      .today-needle {
+        position: absolute;
+        top: 0; bottom: 0;
+        width: 2px;
+        background: var(--primary);
+        box-shadow: 0 0 10px rgba(0,200,83,0.5);
+        z-index: 10;
+        pointer-events: none;
+      }
+      .today-needle::before {
+        content: 'TODAY';
+        position: absolute;
+        top: -18px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 0.6rem;
+        color: var(--primary);
+        letter-spacing: 0.1em;
+        white-space: nowrap;
+      }
+      .today-needle::after {
+        content: '';
+        position: absolute;
+        top: -4px;
+        left: -4px;
+        width: 10px; height: 10px;
+        border-radius: 50%;
+        background: var(--primary);
+        box-shadow: 0 0 12px rgba(0,200,83,0.6);
+        animation: pulse-dot 2s ease-in-out infinite;
+      }
+      @keyframes pulse-dot {
+        0%,100% { box-shadow: 0 0 12px rgba(0,200,83,0.6); }
+        50% { box-shadow: 0 0 20px rgba(0,200,83,0.9); }
+      }
+
+      .row.active-phase .label { border-left: 3px solid var(--primary); }
+      .row.done-phase .bar { opacity: 0.5; }
+      .row.done-phase .label span::after { content: ' ✓'; color: var(--primary); }
+
+      .bar { transition: opacity 0.4s ease; }
     </style>
   </head>
   <body>
@@ -520,5 +564,58 @@
         <button class="primary" type="button" onclick="window.print()">Print chart</button>
       </nav>
     </main>
+
+    <script>
+      (function() {
+        const PHASES = [
+          { row: 0, start: '2026-05-18', end: '2026-05-31' },
+          { row: 1, start: '2026-06-01', end: '2026-06-14' },
+          { row: 2, start: '2026-06-15', end: '2026-06-30' },
+          { row: 3, start: '2026-07-01', end: '2026-07-14' },
+          { row: 4, start: '2026-07-15', end: '2026-08-15' },
+          { row: 5, start: '2026-08-16', end: '2026-09-30' },
+        ];
+
+        const TIMELINE_START = new Date('2026-05-18T00:00:00');
+        const TIMELINE_END   = new Date('2026-09-30T00:00:00');
+        const TOTAL_DAYS = Math.round((TIMELINE_END - TIMELINE_START) / 86400000);
+        const TODAY = new Date();
+        const ELAPSED = Math.max(0, Math.min(TOTAL_DAYS, Math.round((TODAY - TIMELINE_START) / 86400000)));
+        const PCT = (ELAPSED / TOTAL_DAYS) * 100;
+
+        // Inject today needle into each track
+        document.querySelectorAll('.track').forEach(function(track) {
+          if (PCT > 0 && PCT < 100) {
+            var needle = document.createElement('div');
+            needle.className = 'today-needle';
+            needle.style.left = PCT + '%';
+            track.appendChild(needle);
+          }
+        });
+
+        // Highlight active/done phase rows
+        var rows = document.querySelectorAll('.row');
+        PHASES.forEach(function(p, i) {
+          if (i >= rows.length) return;
+          var start = new Date(p.start + 'T00:00:00');
+          var end = new Date(p.end + 'T00:00:00');
+          if (TODAY > end) {
+            rows[i].classList.add('done-phase');
+          } else if (TODAY >= start && TODAY <= end) {
+            rows[i].classList.add('active-phase');
+          }
+        });
+
+        // Update target aside with days remaining
+        var targetEl = document.querySelector('.target strong');
+        if (targetEl) {
+          var betaStart = new Date('2026-07-15T00:00:00');
+          var daysLeft = Math.max(0, Math.round((betaStart - TODAY) / 86400000));
+          if (daysLeft > 0) {
+            targetEl.innerHTML = '$5k + 10 users<br><span style="font-size:0.78rem;color:var(--muted)">' + daysLeft + ' days to beta</span>';
+          }
+        }
+      })();
+    </script>
   </body>
 </html>

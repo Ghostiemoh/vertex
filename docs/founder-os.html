@@ -359,6 +359,7 @@
 
       .phase-progress-mini > div {
         height: 100%;
+        width: var(--p, 0%);
         background: var(--primary);
         border-radius: 999px;
         transition: width 0.6s ease;
@@ -671,6 +672,7 @@
 
       .kpi-bar > div {
         height: 100%;
+        width: 0;
         background: var(--primary);
         border-radius: 999px;
       }
@@ -695,6 +697,21 @@
       .pill.primary { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
       .pill.amber { background: rgba(246, 200, 95, 0.12); border-color: rgba(246, 200, 95, 0.4); color: var(--amber); }
       .pill.rose { background: rgba(255, 84, 112, 0.12); border-color: rgba(255, 84, 112, 0.4); color: var(--rose); }
+
+      .day-pill {
+        display: inline-block;
+        margin-right: 8px;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-family: var(--mono);
+        font-size: 0.66rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        background: var(--panel-2);
+        color: var(--muted);
+      }
+      .day-pill.shipped { background: var(--primary-soft); color: var(--primary); }
+      .day-pill.next { background: rgba(246, 200, 95, 0.14); color: var(--amber); }
 
       /* ===== Content posting cadence ===== */
       .cadence-list {
@@ -781,6 +798,32 @@
       .muted { color: var(--muted); }
       .primary { color: var(--primary); }
       .right { text-align: right; }
+      .center { text-align: center; }
+      .stack-md { margin-bottom: 16px; }
+      .stack-lg { margin-top: 16px; }
+      .link-primary { color: var(--primary); text-decoration: none; }
+      .link-primary:hover { text-decoration: underline; }
+
+      .rule-list {
+        margin: 0;
+        padding-left: 20px;
+        color: var(--text-2);
+        line-height: 1.8;
+      }
+
+      .risk-row.risk-row-header {
+        font-family: var(--mono);
+        font-size: 0.66rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        border-bottom: 1px solid var(--border-strong);
+      }
+
+      .footer-sub {
+        margin-top: 8px;
+        opacity: 0.6;
+      }
     </style>
   </head>
   <body>
@@ -898,51 +941,81 @@
           <span class="meta">Run in parallel with P1 · Persists locally</span>
         </div>
 
+        <div class="card stack-md">
+          <div class="card-head">
+            <h3>📜 Build Log — Recent Ships</h3>
+            <span class="tag">2026-05-19</span>
+          </div>
+          <ul class="cadence-list">
+            <li>
+              <span class="cadence-time">D1 · AM</span>
+              <div class="cadence-desc">
+                <strong>Token mint validation shipped.</strong>
+                <small>Foreign-mint-to-correct-ATA spoof attack closed. 7 tests in <span class="mono">spl-token-validation.test.ts</span>. Reject bare <span class="mono">transfer</span>; require <span class="mono">transferChecked</span>.</small>
+              </div>
+            </li>
+            <li>
+              <span class="cadence-time">D1 · AM</span>
+              <div class="cadence-desc">
+                <strong><span class="mono">/api/send-invoice</span> locked down.</strong>
+                <small>Origin allowlist + 5/hr rate limit + Zod schema. 10 security tests. Rate-limit utility extracted to <span class="mono">src/lib/rate-limit.ts</span> (reused by payments route).</small>
+              </div>
+            </li>
+            <li>
+              <span class="cadence-time">D1 · IDE</span>
+              <div class="cadence-desc">
+                <strong>Test count 32 → 48</strong> · lint clean · build green.
+                <small>New modules: <span class="mono">spl-token-validation.ts</span>, <span class="mono">rate-limit.ts</span>, <span class="mono">schemas.ts</span>. zod installed.</small>
+              </div>
+            </li>
+          </ul>
+        </div>
+
         <div class="grid grid-2">
           <div class="card">
             <div class="card-head">
-              <h3>Tier 1 · Bug / Reliability</h3>
-              <span class="tag rose">By May 31</span>
+              <h3>Fix-All Plan · 10 verified bugs</h3>
+              <span class="tag rose"><span data-counter-for="bugs-t1">0 / 10</span></span>
             </div>
             <ul class="checklist" data-store="bugs-t1">
-              <li><input type="checkbox" id="b1"><label for="b1">Verification idempotency: repeated POSTs do not double-write <span class="mono">payment_events</span></label></li>
-              <li><input type="checkbox" id="b2"><label for="b2">Status drift: dashboard totals restricted to <span class="mono">status = 'finalized'</span></label></li>
-              <li><input type="checkbox" id="b3"><label for="b3">RPC failover: Helius primary + public fallback, log every retry</label></li>
-              <li><input type="checkbox" id="b4"><label for="b4">Token mint mismatch: USDC devnet vs mainnet validated server-side</label></li>
-              <li><input type="checkbox" id="b5"><label for="b5">Memo validation: enforce expected memo, reject on missing/malformed</label></li>
-              <li><input type="checkbox" id="b6"><label for="b6">Wallet disconnect mid-flow: graceful reset, no orphan state</label></li>
-              <li><input type="checkbox" id="b7"><label for="b7">Email send failures: surface error, allow retry, record attempts</label></li>
-              <li><input type="checkbox" id="b8"><label for="b8">PDF metadata: tx signature, network, finality status all embedded</label></li>
-              <li><input type="checkbox" id="b9"><label for="b9">CSRF / origin checks on <span class="mono">/api/email-invoice</span></label></li>
-              <li><input type="checkbox" id="b10"><label for="b10">Race condition audit: invoice → email → status ordering</label></li>
+              <li><input type="checkbox" id="fa1" checked><label for="fa1"><span class="day-pill shipped">D1 ✓</span>Token mint validation — reject foreign mint to correct ATA <span class="mono">spl-token-validation.ts</span></label></li>
+              <li><input type="checkbox" id="fa2" checked><label for="fa2"><span class="day-pill shipped">D1 ✓</span><span class="mono">/api/send-invoice</span> lockdown — origin allowlist + 5/hr rate limit + Zod</label></li>
+              <li><input type="checkbox" id="fa3"><label for="fa3"><span class="day-pill next">D2</span>UNIQUE constraint on <span class="mono">payment_events(payment_request_id, signature)</span> — manual SQL migration</label></li>
+              <li><input type="checkbox" id="fa4"><label for="fa4"><span class="day-pill next">D2</span>Graceful 23505 handling in <span class="mono">appendPaymentEvent</span> — return existing state, no 500</label></li>
+              <li><input type="checkbox" id="fa5"><label for="fa5"><span class="day-pill">D3</span>Zod adoption across <span class="mono">payments/[id]</span> + <span class="mono">actions/pay/[id]</span> routes</label></li>
+              <li><input type="checkbox" id="fa6"><label for="fa6"><span class="day-pill">D4</span>Dashboard status drift — split revenue (finalized) / pending / in-flight buckets</label></li>
+              <li><input type="checkbox" id="fa7"><label for="fa7"><span class="day-pill">D4</span>Wallet disconnect detection — useEffect on <span class="mono">/pay/[id]</span> + invoice editor warning</label></li>
+              <li><input type="checkbox" id="fa8"><label for="fa8"><span class="day-pill">D5</span>PDF on-chain metadata — network label, tx signature, verify URL</label></li>
+              <li><input type="checkbox" id="fa9"><label for="fa9"><span class="day-pill">D6</span><span class="mono">console.error</span> → toast in invoice page (lines 390, 433)</label></li>
+              <li><input type="checkbox" id="fa10"><label for="fa10"><span class="day-pill">D6</span>Resend error mapping — invalid recipient / quota / domain-not-verified</label></li>
             </ul>
           </div>
 
           <div class="card">
             <div class="card-head">
               <h3>Tier 2 · UX Polish</h3>
-              <span class="tag amber">By Jun 14</span>
+              <span class="tag amber"><span data-counter-for="ux-t2">0 / 10</span></span>
             </div>
             <ul class="checklist" data-store="ux-t2">
-              <li><input type="checkbox" id="u1"><label for="u1">Empty states for invoices, clients, contracts, payments</label></li>
-              <li><input type="checkbox" id="u2"><label for="u2">Loading skeletons (not spinners) for dashboard cards</label></li>
+              <li><input type="checkbox" id="u1"><label for="u1">Empty states for invoices, clients, contracts, payments <span class="day-pill">deferred</span></label></li>
+              <li><input type="checkbox" id="u2"><label for="u2">Loading skeletons (not spinners) for dashboard cards <span class="day-pill">deferred</span></label></li>
               <li><input type="checkbox" id="u3"><label for="u3">Form validation messages match brand voice — terse, technical</label></li>
-              <li><input type="checkbox" id="u4"><label for="u4"><span class="mono">cursor: pointer</span> audit across every clickable surface</label></li>
-              <li><input type="checkbox" id="u5"><label for="u5">Spring physics on every modal, hover, page transition</label></li>
+              <li><input type="checkbox" id="u4" checked><label for="u4"><span class="day-pill shipped">audit ✓</span><span class="mono">cursor: pointer</span> audit across every clickable surface</label></li>
+              <li><input type="checkbox" id="u5" checked><label for="u5"><span class="day-pill shipped">audit ✓</span>Spring physics on every modal, hover, page transition</label></li>
               <li><input type="checkbox" id="u6"><label for="u6">Mobile responsiveness on invoice builder + payment link</label></li>
-              <li><input type="checkbox" id="u7"><label for="u7">Sandbox / Production label unmissable on every payment surface</label></li>
-              <li><input type="checkbox" id="u8"><label for="u8">Toast system: success, error, info, on-chain confirmation — distinct</label></li>
+              <li><input type="checkbox" id="u7" checked><label for="u7"><span class="day-pill shipped">audit ✓</span>Sandbox / Production label unmissable on every payment surface</label></li>
+              <li><input type="checkbox" id="u8" checked><label for="u8"><span class="day-pill shipped">audit ✓</span>Toast system: success, error, info, on-chain confirmation — distinct</label></li>
               <li><input type="checkbox" id="u9"><label for="u9">Keyboard navigation (Tab, Enter, Esc) on every form</label></li>
               <li><input type="checkbox" id="u10"><label for="u10">Lighthouse: LCP &lt; 1s, CLS &lt; 0.05 on home + payment link</label></li>
             </ul>
           </div>
         </div>
 
-        <div class="grid grid-2" style="margin-top:16px;">
+        <div class="grid grid-2 stack-lg">
           <div class="card">
             <div class="card-head">
               <h3>Infrastructure · Setup Track</h3>
-              <span class="tag">By Jul 14</span>
+              <span class="tag"><span data-counter-for="infra">0 / 10</span></span>
             </div>
             <ul class="checklist" data-store="infra">
               <li><input type="checkbox" id="i1"><label for="i1">Domain registered (vertex.cash / .io / .so) — Namecheap + Cloudflare</label></li>
@@ -952,7 +1025,7 @@
               <li><input type="checkbox" id="i5"><label for="i5">Plausible (or Umami) live for marketing analytics</label></li>
               <li><input type="checkbox" id="i6"><label for="i6">Sentry wired for client + server, source maps uploading</label></li>
               <li><input type="checkbox" id="i7"><label for="i7">Status page at status.vertex.cash</label></li>
-              <li><input type="checkbox" id="i8"><label for="i8">Helius RPC paid tier configured</label></li>
+              <li><input type="checkbox" id="i8"><label for="i8">Helius RPC paid tier configured <span class="day-pill shipped">audit ✓ RPC failover wired</span></label></li>
               <li><input type="checkbox" id="i9"><label for="i9">CSO comprehensive scan — clean</label></li>
               <li><input type="checkbox" id="i10"><label for="i10">Legal pages live: Terms, Privacy, Refund/Dispute</label></li>
             </ul>
@@ -961,7 +1034,7 @@
           <div class="card">
             <div class="card-head">
               <h3>Brand & Social · Setup Track</h3>
-              <span class="tag">By Jun 7</span>
+              <span class="tag"><span data-counter-for="brand">0 / 10</span></span>
             </div>
             <ul class="checklist" data-store="brand">
               <li><input type="checkbox" id="s1"><label for="s1">Logo system: wordmark, icon, monochrome, dark/light</label></li>
@@ -1003,63 +1076,63 @@
                 <td class="mono right">$0</td>
                 <td class="mono right">$1,000</td>
                 <td class="mono right target">$5,000</td>
-                <td><div class="kpi-bar"><div style="width:0%"></div></div></td>
+                <td><div class="kpi-bar"><div></div></div></td>
               </tr>
               <tr>
                 <td>Active freelancers (7d)</td>
                 <td class="mono right">0</td>
                 <td class="mono right">3</td>
                 <td class="mono right target">10</td>
-                <td><div class="kpi-bar"><div style="width:0%"></div></div></td>
+                <td><div class="kpi-bar"><div></div></div></td>
               </tr>
               <tr>
                 <td>Invoices created</td>
                 <td class="mono right">0</td>
                 <td class="mono right">15</td>
                 <td class="mono right target">50</td>
-                <td><div class="kpi-bar"><div style="width:0%"></div></div></td>
+                <td><div class="kpi-bar"><div></div></div></td>
               </tr>
               <tr>
                 <td>Invoices finalized</td>
                 <td class="mono right">0</td>
                 <td class="mono right">10</td>
                 <td class="mono right target">30</td>
-                <td><div class="kpi-bar"><div style="width:0%"></div></div></td>
+                <td><div class="kpi-bar"><div></div></div></td>
               </tr>
               <tr>
                 <td>Avg time-to-finality</td>
                 <td class="mono right">—</td>
                 <td class="mono right">&lt;60s</td>
                 <td class="mono right target">&lt;30s</td>
-                <td><div class="kpi-bar"><div style="width:0%"></div></div></td>
+                <td><div class="kpi-bar"><div></div></div></td>
               </tr>
               <tr>
                 <td>Failed payment rate</td>
                 <td class="mono right">—</td>
                 <td class="mono right">&lt;10%</td>
                 <td class="mono right target">&lt;5%</td>
-                <td><div class="kpi-bar"><div style="width:0%"></div></div></td>
+                <td><div class="kpi-bar"><div></div></div></td>
               </tr>
               <tr>
                 <td>@vertex_cash followers</td>
                 <td class="mono right">0</td>
                 <td class="mono right">300</td>
                 <td class="mono right target">1,000</td>
-                <td><div class="kpi-bar"><div style="width:0%"></div></div></td>
+                <td><div class="kpi-bar"><div></div></div></td>
               </tr>
               <tr>
                 <td>Blog visits / mo</td>
                 <td class="mono right">0</td>
                 <td class="mono right">500</td>
                 <td class="mono right target">2,000</td>
-                <td><div class="kpi-bar"><div style="width:0%"></div></div></td>
+                <td><div class="kpi-bar"><div></div></div></td>
               </tr>
               <tr>
                 <td>Beta cohort signups</td>
                 <td class="mono right">0</td>
                 <td class="mono right">5</td>
                 <td class="mono right target">10</td>
-                <td><div class="kpi-bar"><div style="width:0%"></div></div></td>
+                <td><div class="kpi-bar"><div></div></div></td>
               </tr>
             </tbody>
           </table>
@@ -1116,7 +1189,7 @@
           </div>
         </div>
 
-        <div class="card" style="margin-top:16px;">
+        <div class="card stack-lg">
           <div class="card-head">
             <h3>Long-Form Essay Queue (Premium · 800–1500 words)</h3>
             <span class="tag">1 per week · Tuesdays</span>
@@ -1200,8 +1273,8 @@
         </div>
 
         <div class="card">
-          <div class="risk-row" style="font-family: var(--mono); font-size: 0.66rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid var(--border-strong);">
-            <span>Risk</span><span style="text-align:center;">Prob</span><span style="text-align:center;">Impact</span>
+          <div class="risk-row risk-row-header">
+            <span>Risk</span><span class="center">Prob</span><span class="center">Impact</span>
           </div>
           <div class="risk-row">
             <span class="name">RPC outage during mainnet payment</span>
@@ -1265,7 +1338,7 @@
 
         <div class="grid grid-2">
           <div class="card">
-            <ol style="margin:0; padding-left:20px; color:var(--text-2); line-height:1.8;">
+            <ol class="rule-list">
               <li><strong>Reliability &gt; features.</strong> Every time.</li>
               <li><strong>One user &gt; ten signups.</strong> Talk to settlers.</li>
               <li><strong>Volume &gt; vanity.</strong> $100 settled beats 10K followers.</li>
@@ -1274,7 +1347,7 @@
             </ol>
           </div>
           <div class="card">
-            <ol start="6" style="margin:0; padding-left:20px; color:var(--text-2); line-height:1.8;">
+            <ol start="6" class="rule-list">
               <li><strong>Say no faster.</strong> Most asks decline or defer.</li>
               <li><strong>Distribution is half the product.</strong> Schedule like code.</li>
               <li><strong>Charge before you're ready.</strong> Money = cleanest feedback.</li>
@@ -1286,8 +1359,8 @@
       </section>
 
       <footer>
-        <div>VERTEX <em>/</em> FOUNDER OS · Generated 2026-05-18 · See <a href="./FOUNDER_OS.md" style="color:var(--primary);">FOUNDER_OS.md</a> for full text</div>
-        <div style="margin-top:8px; opacity:0.6;">Open every morning. Close every night. Ship something. Talk to a user. Post something.</div>
+        <div>VERTEX <em>/</em> FOUNDER OS · Generated 2026-05-18 · See <a href="./FOUNDER_OS.md" class="link-primary">FOUNDER_OS.md</a> for full text</div>
+        <div class="footer-sub">Open every morning. Close every night. Ship something. Talk to a user. Post something.</div>
       </footer>
     </main>
 
@@ -1410,10 +1483,13 @@
             <div class="phase-id">${p.id}${i === currentIdx ? ' · ACTIVE' : ''}</div>
             <div class="phase-title">${p.name}</div>
             <div class="phase-window">${fmtShort(toDate(p.start))} → ${fmtShort(toDate(p.end))}</div>
-            <div class="phase-progress-mini"><div style="width:${pct}%"></div></div>
+            <div class="phase-progress-mini"><div data-p="${pct}"></div></div>
           </div>`;
       });
       phasesEl.innerHTML = timelineHTML;
+      phasesEl.querySelectorAll('.phase-progress-mini > div[data-p]').forEach(el => {
+        el.style.setProperty('--p', el.getAttribute('data-p') + '%');
+      });
 
       // Timeline rail progress
       const firstStart = toDate(allPhases[0].start);
@@ -1457,18 +1533,32 @@
       weekStrip.innerHTML = weekHTML;
 
       // ===== Checklist persistence =====
+      // localStorage wins if user has toggled before; else HTML `checked` default is the source of truth.
       document.querySelectorAll('.checklist').forEach(list => {
         const store = list.dataset.store;
         const saved = JSON.parse(localStorage.getItem('vertex-os-' + store) || '{}');
         list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-          if (saved[cb.id]) cb.checked = true;
+          if (cb.id in saved) cb.checked = !!saved[cb.id];
           cb.addEventListener('change', () => {
             const state = JSON.parse(localStorage.getItem('vertex-os-' + store) || '{}');
             state[cb.id] = cb.checked;
             localStorage.setItem('vertex-os-' + store, JSON.stringify(state));
+            updateChecklistCounters();
           });
         });
       });
+
+      function updateChecklistCounters() {
+        document.querySelectorAll('[data-counter-for]').forEach(el => {
+          const store = el.getAttribute('data-counter-for');
+          const list = document.querySelector(`.checklist[data-store="${store}"]`);
+          if (!list) return;
+          const total = list.querySelectorAll('input[type="checkbox"]').length;
+          const done = list.querySelectorAll('input[type="checkbox"]:checked').length;
+          el.textContent = `${done} / ${total}`;
+        });
+      }
+      updateChecklistCounters();
     </script>
   </body>
 </html>
