@@ -77,7 +77,7 @@ export function Navbar() {
             <button
               title="Toggle navigation menu"
               aria-label="Toggle navigation menu"
-              aria-expanded={isMenuOpen}
+              aria-expanded={isMenuOpen ? "true" : "false"}
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="p-3 text-white/60 hover:text-white cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
             >

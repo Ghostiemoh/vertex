@@ -738,7 +738,7 @@ ${paymentLink}`;
                   <div className="flex flex-col items-center">
                     <div className="flex gap-[1px]">
                       {[...Array(40)].map((_, i) => (
-                        <div key={i} className="bg-black" style={{ width: (i % 3 === 0 ? '1.5px' : '0.5px'), height: '24px' }} />
+                        <div key={i} className={`bg-black h-6 ${i % 3 === 0 ? "w-[1.5px]" : "w-[0.5px]"}`} />
                       ))}
                     </div>
                     <span className="text-[7px] text-zinc-400 mt-1 font-mono">{invoiceNumber}</span>
