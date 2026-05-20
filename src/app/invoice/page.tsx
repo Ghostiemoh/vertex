@@ -215,13 +215,13 @@ export default function InvoicePage() {
     let cursorY = 25;
 
     /* ── HEADER ── */
-    doc.setFont("times", "bold");
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.setTextColor(...black);
     doc.text((vendorName || "MUHAMMAD AUWAL ABDULAZIZ").toUpperCase(), pageWidth / 2, cursorY, { align: "center" });
     cursorY += 8;
 
-    doc.setFont("times", "normal");
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(...darkGray);
     const headerInfo = [];
@@ -244,14 +244,14 @@ export default function InvoicePage() {
 
     /* ── TITLE ── */
     doc.setFontSize(26);
-    doc.setFont("times", "bold");
+    doc.setFont("helvetica", "bold");
     doc.setTextColor(...black);
     doc.text("INVOICE", margin, cursorY);
     cursorY += 15;
 
     /* ── META INFO (From/To) ── */
     doc.setFontSize(11);
-    doc.setFont("times", "bold");
+    doc.setFont("helvetica", "bold");
     doc.text("From:", margin, cursorY);
     doc.text("To:", margin + 95, cursorY);
     cursorY += 5;
@@ -268,7 +268,7 @@ export default function InvoicePage() {
 
     // Invoice Details (Number/Date)
     doc.setFontSize(10);
-    doc.setFont("times", "bold");
+    doc.setFont("helvetica", "bold");
     doc.setTextColor(...black);
     doc.text(`Invoice Number: ${invoiceNumber}`, margin, cursorY);
     doc.text(`Invoice Date: ${currentDate}`, margin + 95, cursorY);
@@ -293,13 +293,13 @@ export default function InvoicePage() {
         fontStyle: "bold",
         fontSize: 10,
         halign: "left",
-        font: "times"
+        font: "helvetica"
       },
       bodyStyles: {
         textColor: [60, 60, 60],
         fontSize: 10,
         valign: "middle",
-        font: "times"
+        font: "helvetica"
       },
       columnStyles: {
         2: { halign: "right" }
@@ -311,31 +311,34 @@ export default function InvoicePage() {
 
     /* ── CRYPTO PAYMENT DETAILS ── */
     doc.setFontSize(12);
-    doc.setFont("times", "bold");
+    doc.setFont("helvetica", "bold");
     doc.setTextColor(...black);
     doc.text("Crypto Payment Details", margin, cursorY);
     cursorY += 8;
 
     doc.setFontSize(10);
-    doc.setFont("times", "normal");
+    doc.setFont("helvetica", "normal");
     doc.setTextColor(...darkGray);
     doc.text("Accepted Networks: Solana", margin, cursorY);
     cursorY += 5;
     doc.text(`Preferred Token: ${token}`, margin, cursorY);
     cursorY += 6;
     
-    doc.setFont("times", "bold");
+    doc.setFont("helvetica", "bold");
     doc.text("Secure Payment Link:", margin, cursorY);
     cursorY += 4;
     
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
+    doc.setFontSize(8.5);
     doc.setTextColor(0, 102, 204); // Link blue
-    const linkLines = doc.splitTextToSize(paymentLink, contentWidth - 40); // Leave room for QR
+    const displayLink = paymentId.length > 30
+      ? `${getOrigin()}/pay/[Click to Pay Invoice #${invoiceNumber}]`
+      : paymentLink;
+    const linkLines = doc.splitTextToSize(displayLink, contentWidth - 40); // Leave room for QR
     doc.text(linkLines, margin, cursorY);
     
     // Make text clickable
-    doc.link(margin, cursorY - 3, contentWidth - 40, linkLines.length * 3.5 + 2, { url: paymentLink });
+    doc.link(margin, cursorY - 3, contentWidth - 40, linkLines.length * 4.5 + 2, { url: paymentLink });
     
     // Add "SCAN TO PAY" Section with QR Code
     const qrSize = 40;
@@ -349,18 +352,18 @@ export default function InvoicePage() {
     
     doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
     
-    doc.setFont("times", "bold");
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(...black);
     doc.text("SCAN TO PAY", qrX + qrSize/2, qrY + qrSize + 6, { align: "center" });
     
-    cursorY += Math.max(linkLines.length * 3.5 + 10, qrSize + 15);
+    cursorY += Math.max(linkLines.length * 4.5 + 10, qrSize + 15);
 
     /* ── ON-CHAIN METADATA ── */
     // Compact 2-row block. Network + Verify URL live in the Crypto Payment Details
     // section above; this block only adds what isn't already on the invoice.
     doc.setFontSize(10);
-    doc.setFont("times", "bold");
+    doc.setFont("helvetica", "bold");
     doc.setTextColor(...black);
     doc.text("On-Chain Metadata", margin, cursorY);
     cursorY += 6;
@@ -390,13 +393,13 @@ export default function InvoicePage() {
 
     /* ── PAYMENT TERMS ── */
     doc.setFontSize(12);
-    doc.setFont("times", "bold");
+    doc.setFont("helvetica", "bold");
     doc.setTextColor(...black);
     doc.text("Payment Terms", margin, cursorY);
     cursorY += 8;
 
     doc.setFontSize(10);
-    doc.setFont("times", "normal");
+    doc.setFont("helvetica", "normal");
     doc.setTextColor(...darkGray);
     const terms = [
       `• Terms: Payment is due within ${dueDate ? Math.ceil((new Date(dueDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24)) : 7} days of the invoice date as per the agreement.`,
@@ -421,6 +424,7 @@ export default function InvoicePage() {
     const totalPages = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
+      doc.setFont("helvetica", "normal");
       
       // Simulated 1D Barcode
       const bcX = pageWidth - margin - 35;
@@ -438,7 +442,7 @@ export default function InvoicePage() {
       doc.setFontSize(6);
       doc.setTextColor(...lightGray);
       doc.text("Generated by Vertex - vertex-pay.vercel.app", margin, 285);
-      doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, 285, { align: "right" });
+      doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, 285, { align: "center" });
     }
 
     await new Promise(r => setTimeout(r, 0));
@@ -694,7 +698,7 @@ ${paymentLink}`;
                 <p className="text-[10px] font-black uppercase tracking-widest text-primary italic">Live Archive Preview</p>
               </div>
 
-              <div className="bg-white rounded-xl p-10 min-h-[842px] flex flex-col text-black font-serif leading-relaxed border border-zinc-100">
+              <div className="bg-white rounded-xl p-10 min-h-[842px] flex flex-col text-black font-sans leading-relaxed border border-zinc-100">
                 {/* ── HEADER: Name + contact info line ── */}
                 <div className="mb-8 text-center">
                   <h1 className="text-xl font-bold tracking-tight mb-2">{(vendorName || "YOUR NAME / ORGANIZATION").toUpperCase()}</h1>
@@ -788,13 +792,7 @@ ${paymentLink}`;
                           rel="noopener noreferrer"
                           className="font-mono text-[9px] text-zinc-500 break-all leading-relaxed bg-zinc-50 p-3 rounded-lg border border-zinc-100 block hover:bg-zinc-100 transition-colors"
                         >
-                          {mounted && effectiveWallet ? `${getOrigin()}/pay/${encodePaymentRequest({
-                            recipient: effectiveWallet,
-                            amount: isMilestone ? total / 2 : total,
-                            token,
-                            description: `Invoice ${invoiceNumber}`,
-                            memo: `Vertex-INV:${invoiceNumber}`,
-                          })}` : "https://vertex-pay.vercel.app/pay/[auto-generated]"}
+                          {mounted && effectiveWallet ? `${getOrigin()}/pay/[Click to Pay Invoice #${invoiceNumber}]` : "https://vertex-pay.vercel.app/pay/[auto-generated]"}
                         </a>
                       </div>
                       {previewQr && (
