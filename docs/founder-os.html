@@ -944,9 +944,30 @@
         <div class="card stack-md">
           <div class="card-head">
             <h3>📜 Build Log — Recent Ships</h3>
-            <span class="tag">2026-05-19</span>
+            <span class="tag">2026-05-20</span>
           </div>
           <ul class="cadence-list">
+            <li>
+              <span class="cadence-time">D2 · PM</span>
+              <div class="cadence-desc">
+                <strong>Fix-All Plan cleared 10/10 in one session.</strong>
+                <small>fa5 Zod on <span class="mono">payments/[id]</span> + <span class="mono">actions/pay/[id]</span>. fa6 dashboard split into Revenue / In-flight / Pending buckets (failed excluded). fa7 wallet disconnect — <span class="mono">/pay/[id]</span> aborts in-flight payment, invoice editor toasts on disconnect. fa8 PDF "On-Chain Metadata" block with network, issuer wallet, Vertex Auth sig, clickable verify URL. fa9 invoice page errors now flow through <span class="mono">logVertexEvent</span> + show real reason in toast. fa10 Resend error mapper distinguishes invalid recipient (422) / domain-not-verified (503) / quota (429) / generic (502). 48 tests still green; typecheck + lint clean.</small>
+              </div>
+            </li>
+            <li>
+              <span class="cadence-time">D2 · AM</span>
+              <div class="cadence-desc">
+                <strong>payment_events lifecycle UI shipped to dashboard.</strong>
+                <small>Inline chevron on every signed-in invoice row reveals the existing <span class="mono">PaymentTimeline</span>. On-demand fetch to <span class="mono">/api/payments/[id]</span> with per-invoice caching + spring-animated reveal. Zero backend changes.</small>
+              </div>
+            </li>
+            <li>
+              <span class="cadence-time">D2 · AM</span>
+              <div class="cadence-desc">
+                <strong>payment_events idempotency guard shipped (fa3 + fa4).</strong>
+                <small>Partial UNIQUE index on <span class="mono">(payment_request_id, signature, event_type)</span> via <span class="mono">migrations/001_payment_events_unique.sql</span>. <span class="mono">appendPaymentEvent</span> now swallows 23505 as warn log + returns; other DB errors log as error and never throw. Verify path and webhook retries are now safely idempotent.</small>
+              </div>
+            </li>
             <li>
               <span class="cadence-time">D1 · AM</span>
               <div class="cadence-desc">
@@ -980,14 +1001,14 @@
             <ul class="checklist" data-store="bugs-t1">
               <li><input type="checkbox" id="fa1" checked><label for="fa1"><span class="day-pill shipped">D1 ✓</span>Token mint validation — reject foreign mint to correct ATA <span class="mono">spl-token-validation.ts</span></label></li>
               <li><input type="checkbox" id="fa2" checked><label for="fa2"><span class="day-pill shipped">D1 ✓</span><span class="mono">/api/send-invoice</span> lockdown — origin allowlist + 5/hr rate limit + Zod</label></li>
-              <li><input type="checkbox" id="fa3"><label for="fa3"><span class="day-pill next">D2</span>UNIQUE constraint on <span class="mono">payment_events(payment_request_id, signature)</span> — manual SQL migration</label></li>
-              <li><input type="checkbox" id="fa4"><label for="fa4"><span class="day-pill next">D2</span>Graceful 23505 handling in <span class="mono">appendPaymentEvent</span> — return existing state, no 500</label></li>
-              <li><input type="checkbox" id="fa5"><label for="fa5"><span class="day-pill">D3</span>Zod adoption across <span class="mono">payments/[id]</span> + <span class="mono">actions/pay/[id]</span> routes</label></li>
-              <li><input type="checkbox" id="fa6"><label for="fa6"><span class="day-pill">D4</span>Dashboard status drift — split revenue (finalized) / pending / in-flight buckets</label></li>
-              <li><input type="checkbox" id="fa7"><label for="fa7"><span class="day-pill">D4</span>Wallet disconnect detection — useEffect on <span class="mono">/pay/[id]</span> + invoice editor warning</label></li>
-              <li><input type="checkbox" id="fa8"><label for="fa8"><span class="day-pill">D5</span>PDF on-chain metadata — network label, tx signature, verify URL</label></li>
-              <li><input type="checkbox" id="fa9"><label for="fa9"><span class="day-pill">D6</span><span class="mono">console.error</span> → toast in invoice page (lines 390, 433)</label></li>
-              <li><input type="checkbox" id="fa10"><label for="fa10"><span class="day-pill">D6</span>Resend error mapping — invalid recipient / quota / domain-not-verified</label></li>
+              <li><input type="checkbox" id="fa3" checked><label for="fa3"><span class="day-pill shipped">D2 ✓</span>UNIQUE constraint on <span class="mono">payment_events(payment_request_id, signature, event_type)</span> — migration in <span class="mono">src/lib/migrations/001_payment_events_unique.sql</span></label></li>
+              <li><input type="checkbox" id="fa4" checked><label for="fa4"><span class="day-pill shipped">D2 ✓</span>Graceful 23505 handling in <span class="mono">appendPaymentEvent</span> — duplicate writes log + return, no 500</label></li>
+              <li><input type="checkbox" id="fa5" checked><label for="fa5"><span class="day-pill shipped">D2 ✓</span>Zod adoption across <span class="mono">payments/[id]</span> + <span class="mono">actions/pay/[id]</span> routes</label></li>
+              <li><input type="checkbox" id="fa6" checked><label for="fa6"><span class="day-pill shipped">D2 ✓</span>Dashboard status drift — split revenue (finalized) / in-flight / pending buckets</label></li>
+              <li><input type="checkbox" id="fa7" checked><label for="fa7"><span class="day-pill shipped">D2 ✓</span>Wallet disconnect detection — useEffect on <span class="mono">/pay/[id]</span> + invoice editor toast</label></li>
+              <li><input type="checkbox" id="fa8" checked><label for="fa8"><span class="day-pill shipped">D2 ✓</span>PDF on-chain metadata block — network label, issuer wallet, Vertex Auth signature, verify URL</label></li>
+              <li><input type="checkbox" id="fa9" checked><label for="fa9"><span class="day-pill shipped">D2 ✓</span><span class="mono">console.error</span> → <span class="mono">logVertexEvent</span> + toast w/ real error message in invoice page</label></li>
+              <li><input type="checkbox" id="fa10" checked><label for="fa10"><span class="day-pill shipped">D2 ✓</span>Resend error mapping — invalid recipient (422) / domain-not-verified (503) / quota (429) / generic (502)</label></li>
             </ul>
           </div>
 
@@ -1359,7 +1380,7 @@
       </section>
 
       <footer>
-        <div>VERTEX <em>/</em> FOUNDER OS · Generated 2026-05-18 · See <a href="./FOUNDER_OS.md" class="link-primary">FOUNDER_OS.md</a> for full text</div>
+        <div>VERTEX <em>/</em> FOUNDER OS · Generated 2026-05-18 · Last updated 2026-05-20 · See <a href="./FOUNDER_OS.md" class="link-primary">FOUNDER_OS.md</a> for full text</div>
         <div class="footer-sub">Open every morning. Close every night. Ship something. Talk to a user. Post something.</div>
       </footer>
     </main>
@@ -1382,11 +1403,11 @@
       const WEEK1 = {
         '2026-05-18': { name: 'Mon', build: 'Audit /api/payments/verify for idempotency; add Vitest cases', distribute: 'Post: "Week ahead — shipping verification reliability." Set up Typefully.' },
         '2026-05-19': { name: 'Tue', build: 'Implement idempotency lock + retry-safe write', distribute: 'Long-form essay: "Why finality is the only number that matters."' },
-        '2026-05-20': { name: 'Wed', build: 'Add payment_events lifecycle history UI on invoice page', distribute: 'DM 10 Superteam Nigeria members. Screenshot today\'s ship → tweet.' },
-        '2026-05-21': { name: 'Thu', build: 'Status drift fix: dashboard totals = finalized only', distribute: 'Apply to Solana Foundation grant. Draft case study outline.' },
-        '2026-05-22': { name: 'Fri', build: 'RPC failover telemetry + Helius primary setup', distribute: 'Founder POV essay. NO DEPLOYS. Plan weekend content.' },
-        '2026-05-23': { name: 'Sat', build: 'Cleanup: console.log removal, type-safety pass', distribute: 'Engagement: 20 quote-tweets in Solana ecosystem. 10 replies.' },
-        '2026-05-24': { name: 'Sun', build: 'Weekly review + plan Week 2', distribute: 'Week-in-numbers post. Buy domain. Set up Google Workspace.' },
+        '2026-05-20': { name: 'Wed', build: '✓ SHIPPED — all 10/10 Fix-All bugs cleared in one session: lifecycle UI · fa3 unique index · fa4 idempotent appendPaymentEvent · fa5 Zod routes · fa6 status buckets · fa7 disconnect detection · fa8 PDF metadata · fa9 monitored toasts · fa10 Resend error mapping', distribute: 'DM 10 Superteam Nigeria members. Screenshot today\'s ship → tweet — this is a real "before / after Fix-All" thread.' },
+        '2026-05-21': { name: 'Thu', build: 'Phase 1 acceptance pass — run all 48 tests + manual QA on 4 happy paths and 6 failure paths', distribute: 'Apply to Solana Foundation grant. Draft case study outline using the "10 bugs in one day" ship.' },
+        '2026-05-22': { name: 'Fri', build: 'SETUP_TRACK §1 — buy domain (vertex.cash). Configure Cloudflare DNS. Connect to Vercel. NO PROD DEPLOYS until DNS settles.', distribute: 'Founder POV essay: "10 bugs in one day — what discipline + tools unlock."' },
+        '2026-05-23': { name: 'Sat', build: 'SETUP_TRACK §2–§3 — Google Workspace inboxes + DKIM/SPF/DMARC TXT records. Wire noreply@vertex.cash into RESEND_FROM_EMAIL.', distribute: 'Engagement: 20 quote-tweets. 10 replies. Drop the case study link.' },
+        '2026-05-24': { name: 'Sun', build: 'SETUP_TRACK §4 + §6 — PostHog 8 funnel events + Sentry SDK. Weekly review. Plan Week 2 (Phase 2 — Invoice Workflow Polish).', distribute: 'Week-in-numbers post. Track: bugs cleared (10), tests passing (48), days ahead of schedule (~9).' },
       };
 
       const WEEK2 = {

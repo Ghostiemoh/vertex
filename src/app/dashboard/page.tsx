@@ -12,10 +12,10 @@ import {
   ChevronDown,
   Clock,
   Copy,
-  FileCheck,
   FileText,
   Loader2,
   Plus,
+  Send,
   TrendingUp,
   Users,
   Wallet,
@@ -190,13 +190,24 @@ export default function Dashboard() {
       .eq("auth_user_id", user.id);
 
     const invoiceStats = (allInvoices as InvoiceStat[] | null) || [];
+    // Three lifecycle buckets so revenue, pending, and in-flight don't blur:
+    //   - finalized: settled on-chain, real revenue
+    //   - in-flight: payment_submitted or payment_confirmed (money is moving)
+    //   - pending: draft / sent / viewed (awaiting payer action)
+    // payment_failed is intentionally excluded from all three.
     const finalizedByToken: Record<string, number> = {};
+    const inFlightByToken: Record<string, number> = {};
     const pendingByToken: Record<string, number> = {};
     for (const item of invoiceStats) {
       const tk = item.token || "SOL";
       const amount = Number(item.total);
-      if (mapLegacyInvoiceStatus(item.status) === "payment_finalized") {
+      const normalized = mapLegacyInvoiceStatus(item.status);
+      if (normalized === "payment_finalized") {
         finalizedByToken[tk] = (finalizedByToken[tk] || 0) + amount;
+      } else if (normalized === "payment_submitted" || normalized === "payment_confirmed") {
+        inFlightByToken[tk] = (inFlightByToken[tk] || 0) + amount;
+      } else if (normalized === "payment_failed") {
+        // Failed invoices are reported in the rows below; do not count toward any total.
       } else {
         pendingByToken[tk] = (pendingByToken[tk] || 0) + amount;
       }
@@ -229,6 +240,7 @@ export default function Dashboard() {
         .slice(0, 8),
       stats: {
         totalInvoiced: formatTokenMap(finalizedByToken),
+        inFlightPayments: formatTokenMap(inFlightByToken),
         activeContracts: contractCount || 0,
         totalClients: clientCount || 0,
         pendingPayments: formatTokenMap(pendingByToken),
@@ -252,12 +264,14 @@ export default function Dashboard() {
   const recentInvoices = isDemo ? DEMO_INVOICES : (data?.recentInvoices || []);
   const stats = isDemo ? {
     totalInvoiced: "2.5000 SOL",
+    inFlightPayments: "1.0000 SOL",
     activeContracts: 2,
     totalClients: 3,
-    pendingPayments: "500.00 USDC · 1.0000 SOL",
+    pendingPayments: "500.00 USDC",
     paymentLinks: 2,
   } : (data?.stats || {
     totalInvoiced: "0",
+    inFlightPayments: "0",
     activeContracts: 0,
     totalClients: 0,
     pendingPayments: "0",
@@ -333,18 +347,25 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
         {[
           {
-            label: "Revenue received",
+            label: "Revenue (finalized)",
             value: stats.totalInvoiced,
             icon: TrendingUp,
             color: "text-emerald-500",
             rawColor: "#10b981",
           },
           {
-            label: "Agreement drafts",
-            value: stats.activeContracts,
-            icon: FileCheck,
+            label: "In-flight",
+            value: stats.inFlightPayments,
+            icon: Send,
             color: "text-blue-500",
             rawColor: "#3b82f6",
+          },
+          {
+            label: "Pending (sent · viewed)",
+            value: stats.pendingPayments,
+            icon: Clock,
+            color: "text-orange-500",
+            rawColor: "#f59e0b",
           },
           {
             label: "Saved clients",
@@ -352,13 +373,6 @@ export default function Dashboard() {
             icon: Users,
             color: "text-purple-500",
             rawColor: "#a855f7",
-          },
-          {
-            label: "Awaiting payment",
-            value: stats.pendingPayments,
-            icon: Clock,
-            color: "text-orange-500",
-            rawColor: "#f59e0b",
           },
         ].map((stat, i) => (
           <motion.div

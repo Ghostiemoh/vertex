@@ -13,6 +13,60 @@ const resend = resendApiKey ? new Resend(resendApiKey) : null;
 const SEND_INVOICE_RATE_LIMIT = 5;
 const SEND_INVOICE_RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
+interface MappedSendError {
+  code: "invalid_recipient" | "domain_not_verified" | "quota_exceeded" | "send_failed";
+  userMessage: string;
+  status: number;
+}
+
+// Resend reports errors via either a thrown exception or a `{ error }` field on the
+// SDK return value. Both surface a `name` and `message`. We map the three failure
+// modes the user actually sees (bad recipient, unverified sender domain, quota)
+// to actionable copy so the invoice UI can show a real reason instead of a generic
+// "failed to send".
+function mapResendError(error: { name?: string; message?: string } | null | undefined): MappedSendError {
+  const name = error?.name ?? "";
+  const message = error?.message ?? "";
+
+  if (
+    name === "validation_error" ||
+    /invalid.*(email|recipient|to[\s_-]?address)/i.test(message)
+  ) {
+    return {
+      code: "invalid_recipient",
+      userMessage: "The recipient email address looks invalid. Check it and try again.",
+      status: 422,
+    };
+  }
+
+  if (/domain.*(not[\s_-]?verified|unverified)|verify.*domain/i.test(message)) {
+    return {
+      code: "domain_not_verified",
+      userMessage:
+        "Vertex's sender domain is not verified with Resend yet. Notify support@vertex.cash so we can finish DNS setup.",
+      status: 503,
+    };
+  }
+
+  if (
+    name === "rate_limit_exceeded" ||
+    name === "daily_quota_exceeded" ||
+    /quota|daily.?limit|rate.?limit/i.test(message)
+  ) {
+    return {
+      code: "quota_exceeded",
+      userMessage: "Email quota exhausted for now. Try again in a few minutes.",
+      status: 429,
+    };
+  }
+
+  return {
+    code: "send_failed",
+    userMessage: "Failed to send the invoice email. Please retry.",
+    status: 502,
+  };
+}
+
 function buildAllowedOrigins(): string[] {
   return [
     SITE_URL,
@@ -113,7 +167,7 @@ export async function POST(req: Request) {
   try {
     const pdfBuffer = Buffer.from(pdfBase64, "base64");
 
-    const data = await resend.emails.send({
+    const result = await resend.emails.send({
       from: resendFromEmail,
       to: [clientEmail],
       subject: `New Invoice ${invoiceNumber} from ${vendorName}`,
@@ -132,16 +186,47 @@ export async function POST(req: Request) {
           content: pdfBuffer,
         },
       ],
-    });
+    }) as { data?: unknown; error?: { name?: string; message?: string } | null } | undefined;
+
+    if (result?.error) {
+      const mapped = mapResendError(result.error);
+      logVertexEvent(
+        "email_send_failed",
+        {
+          reason: result.error.message ?? "unknown",
+          providerName: result.error.name ?? null,
+          mappedCode: mapped.code,
+          clientEmail,
+          invoiceNumber,
+        },
+        "error"
+      );
+      return NextResponse.json(
+        { error: mapped.userMessage, code: mapped.code },
+        { status: mapped.status }
+      );
+    }
 
     logVertexEvent("email_sent", { clientEmail, invoiceNumber });
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: result?.data ?? null });
   } catch (error) {
+    const mapped = mapResendError(
+      error instanceof Error ? { name: error.name, message: error.message } : null
+    );
     logVertexEvent(
       "email_send_failed",
-      { reason: error instanceof Error ? error.message : "unknown" },
+      {
+        reason: error instanceof Error ? error.message : "unknown",
+        providerName: error instanceof Error ? error.name : null,
+        mappedCode: mapped.code,
+        clientEmail,
+        invoiceNumber,
+      },
       "error"
     );
-    return NextResponse.json({ error: "Failed to send email." }, { status: 500 });
+    return NextResponse.json(
+      { error: mapped.userMessage, code: mapped.code },
+      { status: mapped.status }
+    );
   }
 }

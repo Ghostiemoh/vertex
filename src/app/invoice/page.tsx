@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import Image from "next/image";
@@ -12,6 +12,7 @@ import { VERTEX_NETWORK, NETWORK_LABEL } from "@/lib/config";
 import { getOrigin } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/Toast";
+import { logVertexEvent } from "@/lib/monitoring";
 import QRCode from "qrcode";
 import { useSession } from "@/components/SessionProvider";
 
@@ -63,6 +64,20 @@ export default function InvoicePage() {
   const [mounted, setMounted] = useState(false);
   const [currentDate, setCurrentDate] = useState("");
   const [previewQr, setPreviewQr] = useState("");
+
+  const wasConnectedRef = useRef(false);
+
+  // Wallet disconnect warning: when the user disconnects after having been connected
+  // we surface it as a toast so they don't unknowingly issue an unsigned invoice.
+  useEffect(() => {
+    if (wasConnectedRef.current && !connected) {
+      toast(
+        "Wallet disconnected. Reconnect or enter a wallet manually to continue.",
+        "info"
+      );
+    }
+    wasConnectedRef.current = connected;
+  }, [connected, toast]);
 
   useEffect(() => {
     setInvoiceNumber(`INV-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`);
@@ -300,6 +315,46 @@ export default function InvoicePage() {
     
     cursorY += Math.max(linkLines.length * 3.5 + 10, qrSize + 15);
 
+    /* ── ON-CHAIN METADATA ── */
+    doc.setFontSize(10);
+    doc.setFont("times", "bold");
+    doc.setTextColor(...black);
+    doc.text("On-Chain Metadata", margin, cursorY);
+    cursorY += 6;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...darkGray);
+
+    const metadataRows: [string, string][] = [
+      ["Network", `Solana (${NETWORK_LABEL})`],
+      ["Issuer wallet", effectiveWallet || "—"],
+      [
+        "Vertex Auth signature",
+        signatureBase58 ? `${signatureBase58.slice(0, 32)}…` : "Not signed (vendor wallet not connected at issue)",
+      ],
+      ["Verify on-chain", paymentLink],
+    ];
+
+    const labelColumnWidth = 38;
+    metadataRows.forEach(([label, value]) => {
+      doc.setFont("helvetica", "bold");
+      doc.text(`${label}:`, margin, cursorY);
+      doc.setFont("helvetica", "normal");
+      const wrapped = doc.splitTextToSize(value, contentWidth - labelColumnWidth);
+      doc.text(wrapped, margin + labelColumnWidth, cursorY);
+      cursorY += wrapped.length * 4 + 2;
+    });
+    // Clickable hotspot on the verify-on-chain URL (last row).
+    doc.link(
+      margin + labelColumnWidth,
+      cursorY - 6,
+      contentWidth - labelColumnWidth,
+      4,
+      { url: paymentLink }
+    );
+    cursorY += 6;
+
     /* ── PAYMENT TERMS ── */
     doc.setFontSize(12);
     doc.setFont("times", "bold");
@@ -387,8 +442,9 @@ export default function InvoicePage() {
       doc.save(`Invoice_${invoiceNumber}.pdf`);
       toast("Invoice PDF generated successfully!", "success");
     } catch (e) {
-      console.error(e);
-      toast("Failed to generate PDF.", "error");
+      const message = e instanceof Error ? e.message : "Failed to generate PDF.";
+      logVertexEvent("invoice_pdf_export_failed", { reason: message }, "error");
+      toast(`PDF export failed: ${message}`, "error");
     } finally {
       setIsGenerating(false);
     }
@@ -430,8 +486,13 @@ export default function InvoicePage() {
 
       toast(`Invoice emailed to ${clientEmail} successfully!`, "success");
     } catch (e) {
-      console.error(e);
-      toast("Failed to send email.", "error");
+      const message = e instanceof Error ? e.message : "Failed to send email.";
+      logVertexEvent(
+        "invoice_email_send_failed",
+        { reason: message, clientEmail, invoiceNumber },
+        "error"
+      );
+      toast(`Email send failed: ${message}`, "error");
     } finally {
       setIsSending(false);
     }

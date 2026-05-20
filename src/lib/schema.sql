@@ -150,3 +150,8 @@ CREATE INDEX IF NOT EXISTS idx_invoices_auth_user_id ON public.invoices(auth_use
 CREATE INDEX IF NOT EXISTS idx_invoices_payment_id ON public.invoices(payment_id);
 CREATE INDEX IF NOT EXISTS idx_contracts_auth_user_id ON public.contracts(auth_user_id);
 CREATE INDEX IF NOT EXISTS idx_payment_events_request_id ON public.payment_events(payment_request_id);
+
+-- Idempotency guard: prevents duplicate lifecycle events on retry. See migrations/001_payment_events_unique.sql for the rationale.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_events_unique_per_signature
+  ON public.payment_events (payment_request_id, signature, event_type)
+  WHERE signature IS NOT NULL;

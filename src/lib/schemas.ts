@@ -36,3 +36,15 @@ export const paymentVerifyPostSchema = z.object({
 });
 
 export type PaymentVerifyPostInput = z.infer<typeof paymentVerifyPostSchema>;
+
+// Solana Actions / Blink POST payload: payer pubkey only.
+export const blinkActionPostSchema = z.object({
+  account: z
+    .string()
+    .regex(
+      /^[1-9A-HJ-NP-Za-km-z]{32,44}$/,
+      "Account must be a valid Solana public key."
+    ),
+});
+
+export type BlinkActionPostInput = z.infer<typeof blinkActionPostSchema>;

@@ -1,10 +1,10 @@
 import {
   ActionGetResponse,
-  ActionPostRequest,
   ActionPostResponse,
   ACTIONS_CORS_HEADERS,
   createPostResponse,
 } from "@solana/actions";
+import { blinkActionPostSchema } from "@/lib/schemas";
 import {
   PublicKey,
   Transaction,
@@ -88,8 +88,28 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const body: ActionPostRequest = await req.json();
-    const payerPubkey = new PublicKey(body.account);
+
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return Response.json(
+        { message: "Invalid JSON payload" },
+        { status: 400, headers: ACTIONS_CORS_HEADERS }
+      );
+    }
+
+    const parsedBody = blinkActionPostSchema.safeParse(rawBody);
+    if (!parsedBody.success) {
+      return Response.json(
+        {
+          message: parsedBody.error.issues[0]?.message ?? "Invalid Action payload",
+        },
+        { status: 400, headers: ACTIONS_CORS_HEADERS }
+      );
+    }
+
+    const payerPubkey = new PublicKey(parsedBody.data.account);
     const request = decodePaymentRequest(id);
 
     if (!request) {

@@ -147,6 +147,16 @@ export default function PaymentPage({ params }: PageProps) {
     }
   }, [status]);
 
+  // Wallet disconnect detection: if the payer disconnects mid-payment we surface
+  // a clear error rather than silently leaving the UI in "processing".
+  useEffect(() => {
+    if (status === "processing" && !connected) {
+      setStatus("error");
+      setError("Wallet disconnected during payment. Reconnect and retry — your funds are safe.");
+      toast("Wallet disconnected. Payment cancelled.", "error");
+    }
+  }, [connected, status, toast]);
+
   const handlePayment = async () => {
     if (!publicKey || !paymentData) return;
 

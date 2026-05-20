@@ -15,6 +15,7 @@ import { logVertexEvent } from "@/lib/monitoring";
 import { mapLegacyInvoiceStatus, type PaymentStatus } from "@/lib/payments";
 import { withRpcFallback } from "@/lib/rpc";
 import { checkRateLimit, extractClientIp } from "@/lib/rate-limit";
+import { paymentVerifyPostSchema } from "@/lib/schemas";
 import {
   hasParsedInstruction,
   matchesSplTokenTransfer,
@@ -216,15 +217,51 @@ async function appendPaymentEvent(
   const supabaseAdmin = getSupabaseAdmin();
   if (!supabaseAdmin || (!paymentRequest && !invoice)) return;
 
-  await supabaseAdmin.from("payment_events").insert({
+  const signature = typeof details.signature === "string" ? details.signature : null;
+  const { error } = await supabaseAdmin.from("payment_events").insert({
     auth_user_id: paymentRequest?.auth_user_id ?? invoice?.auth_user_id ?? null,
     payment_request_id: paymentRequest?.id ?? null,
     invoice_id: invoice?.id ?? paymentRequest?.invoice_id ?? null,
     event_type: eventType,
     status: paymentRequest?.payment_status ?? invoice?.status ?? null,
-    signature: typeof details.signature === "string" ? details.signature : null,
+    signature,
     details,
   });
+
+  if (!error) return;
+
+  // 23505 = postgres unique_violation. The idx_payment_events_unique_per_signature
+  // partial index guarantees a single row per (payment_request_id, signature, event_type),
+  // so the conflict means this exact event was already recorded — we keep the existing
+  // row's lifecycle state and treat the duplicate write as a no-op.
+  if (error.code === "23505") {
+    logVertexEvent(
+      "payment_event_duplicate",
+      {
+        eventType,
+        paymentRequestId: paymentRequest?.id ?? null,
+        invoiceId: invoice?.id ?? null,
+        signature,
+      },
+      "warn"
+    );
+    return;
+  }
+
+  // Any other DB failure must not propagate — verify and webhook paths depend on
+  // appendPaymentEvent being side-effect-only and never throwing.
+  logVertexEvent(
+    "payment_event_insert_failed",
+    {
+      eventType,
+      code: error.code ?? null,
+      message: error.message,
+      paymentRequestId: paymentRequest?.id ?? null,
+      invoiceId: invoice?.id ?? null,
+      signature,
+    },
+    "error"
+  );
 }
 
 async function syncFinality(paymentRequest: PaymentRequestRow, invoice: InvoiceRow | null) {
@@ -432,14 +469,28 @@ export async function POST(
     );
   }
 
-  const body = (await req.json()) as { signature?: string };
-  const SIG_REGEX = /^[1-9A-HJ-NP-Za-km-z]{87,88}$/;
-  if (!body.signature || !SIG_REGEX.test(body.signature)) {
+  let rawBody: unknown;
+  try {
+    rawBody = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
+  }
+
+  const parsed = paymentVerifyPostSchema.safeParse(rawBody);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "Invalid transaction signature format." },
+      {
+        error: "Invalid request body.",
+        issues: parsed.error.issues.map((i) => ({
+          path: i.path.join("."),
+          message: i.message,
+        })),
+      },
       { status: 400 }
     );
   }
+
+  const body = parsed.data;
 
   const supabaseAdmin = getSupabaseAdmin();
   let invoice: InvoiceRow | null = null;
