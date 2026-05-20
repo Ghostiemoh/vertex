@@ -837,7 +837,7 @@ ${paymentLink}`;
 
                 <button
                   onClick={copySocialLink}
-                  disabled={isGenerating || isSending || !vendorName || !clientName || total <= 0 || !effectiveWallet}
+                  disabled={isGenerating || isSending || total <= 0 || !effectiveWallet}
                   className="vertex-btn-outline w-full !h-16"
                 >
                   <Share2 className="w-5 h-5" />
@@ -847,18 +847,27 @@ ${paymentLink}`;
 
               <button
                 onClick={exportPDF}
-                disabled={isGenerating || isSending || !vendorName || !clientName || total <= 0 || !effectiveWallet}
-                className="w-full py-4 text-white/40 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest cursor-pointer"
+                disabled={isGenerating || isSending || total <= 0 || !effectiveWallet}
+                className="w-full py-4 text-white/40 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-white/40 flex items-center justify-center gap-2"
               >
                 {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                 Export Archive (.PDF)
               </button>
 
-              {(!effectiveWallet || !clientEmail) && (
-                <p className="text-center text-[10px] font-bold text-orange-500 uppercase tracking-widest">
-                  Requires Wallet & Client Email
-                </p>
-              )}
+              {(() => {
+                const missing: string[] = [];
+                if (!effectiveWallet) missing.push("Connected wallet (or manual address)");
+                if (total <= 0) missing.push("Line item with a non-zero amount");
+                if (!clientEmail) missing.push("Client email (Dispatch only)");
+                if (!vendorName) missing.push("Vendor name (optional — PDF uses default)");
+                if (!clientName) missing.push("Client name (optional — PDF uses placeholder)");
+                if (missing.length === 0) return null;
+                return (
+                  <p className="text-center text-[10px] font-bold text-orange-500 uppercase tracking-widest">
+                    Missing: {missing.join(" · ")}
+                  </p>
+                );
+              })()}
             </div>
           </div>
         </div>
