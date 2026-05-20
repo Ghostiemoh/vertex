@@ -332,6 +332,10 @@ export async function GET(
         .update({ status: "viewed", viewed_at: new Date().toISOString() })
         .eq("id", invoice.id);
       invoice.status = "viewed";
+
+      await appendPaymentEvent(paymentRequest, invoice, "invoice_viewed", {
+        viewedAt: new Date().toISOString()
+      });
     }
 
     if (
@@ -341,6 +345,33 @@ export async function GET(
     ) {
       paymentRequest = await syncFinality(paymentRequest, invoice);
     }
+  }
+
+  let events: {
+    id: string;
+    event_type: string;
+    status: string | null;
+    signature: string | null;
+    details: Record<string, unknown> | null;
+    created_at: string;
+  }[] = [];
+  if (supabaseAdmin) {
+    const eventQuery = supabaseAdmin
+      .from("payment_events")
+      .select("id, event_type, status, signature, details, created_at");
+
+    if (paymentRequest && invoice) {
+      eventQuery.or(`payment_request_id.eq.${id},invoice_id.eq.${invoice.id}`);
+    } else if (paymentRequest) {
+      eventQuery.eq("payment_request_id", id);
+    } else if (invoice) {
+      eventQuery.eq("invoice_id", invoice.id);
+    } else {
+      eventQuery.eq("payment_request_id", id);
+    }
+
+    const { data: eventsData } = await eventQuery.order("created_at", { ascending: true });
+    events = (eventsData as typeof events) || [];
   }
 
   const lifecycle = paymentRequest
@@ -369,6 +400,7 @@ export async function GET(
     invoice,
     paymentRequest,
     lifecycle,
+    events,
     breakdown: calculatePaymentBreakdown(request.amount),
   });
 }

@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { EnvironmentBadge } from "@/components/EnvironmentBadge";
+import { PaymentTimeline } from "@/components/PaymentTimeline";
 import { useToast } from "@/components/Toast";
 import {
   calculatePaymentBreakdown,
@@ -47,14 +48,31 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+interface PaymentEvent {
+  id: string;
+  event_type: string;
+  status: string;
+  signature: string | null;
+  details: Record<string, unknown>;
+  created_at: string;
+}
+
 interface PaymentRecord {
   request: PaymentRequest;
   invoice: {
+    id?: string;
     invoice_number?: string;
     client_name?: string;
     status?: string;
     signature?: string;
     tx_hash?: string;
+    created_at?: string;
+  } | null;
+  paymentRequest?: {
+    id: string;
+    created_at: string;
+    payment_status: string;
+    signature: string | null;
   } | null;
   breakdown: {
     recipientAmount: number;
@@ -70,6 +88,7 @@ interface PaymentRecord {
     finalizedAt: string | null;
     failureReason: string | null;
   };
+  events?: PaymentEvent[];
 }
 
 const TOKEN_LABELS: Record<PaymentToken, { color: string }> = {
@@ -462,6 +481,17 @@ export default function PaymentPage({ params }: PageProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {fetchedData && (
+        <PaymentTimeline
+          events={fetchedData.events || []}
+          createdAt={
+            fetchedData.paymentRequest?.created_at ||
+            fetchedData.invoice?.created_at ||
+            new Date().toISOString()
+          }
+        />
+      )}
     </div>
   );
 }
