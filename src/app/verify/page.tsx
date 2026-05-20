@@ -30,6 +30,8 @@ interface TxDetails {
   sender: string;
   recipient: string;
   amount: number;
+  token: string;
+  mint?: string;
   slot: number;
   timestamp: string | null;
 }
@@ -80,6 +82,7 @@ export default function VerifyPage() {
           sender: "Unavailable from RPC fallback",
           recipient: "Unavailable from RPC fallback",
           amount: 0,
+          token: "SOL",
           slot: status.context.slot,
           timestamp: "Recently confirmed",
         });
@@ -87,25 +90,125 @@ export default function VerifyPage() {
       }
 
       const instructions = tx.transaction.message.instructions;
-      const transferInstruction = instructions.find(
+      
+      let transferInstruction: ParsedInstruction | null = null;
+      let tokenType: "SOL" | "SPL" = "SOL";
+      let mintAddress: string | null = null;
+      let decimals = 9;
+
+      // Find system transfer first
+      const solTransfer = instructions.find(
         (instruction): instruction is ParsedInstruction =>
           hasParsedInstruction(instruction) &&
           instruction.program === "system" &&
           instruction.parsed.type === "transfer"
       );
 
+      if (solTransfer) {
+        transferInstruction = solTransfer;
+        tokenType = "SOL";
+      } else {
+        // Look for SPL token transfer or transferChecked
+        const splTransfer = instructions.find(
+          (instruction): instruction is ParsedInstruction =>
+            hasParsedInstruction(instruction) &&
+            instruction.program === "spl-token" &&
+            (instruction.parsed.type === "transfer" ||
+              instruction.parsed.type === "transferChecked")
+        );
+        if (splTransfer) {
+          transferInstruction = splTransfer;
+          tokenType = "SPL";
+        }
+      }
+
       const sender =
         tx.transaction.message.accountKeys[0]?.pubkey.toBase58() || "Unknown";
-      const recipient = transferInstruction?.parsed.info?.destination || "Unknown";
-      const amount = transferInstruction?.parsed.info?.lamports
-        ? Number(transferInstruction.parsed.info.lamports) / LAMPORTS_PER_SOL
-        : 0;
+      let recipient = "Unknown";
+      let amount = 0;
+      let tokenSymbol = "SOL";
+
+      if (transferInstruction) {
+        const info = transferInstruction.parsed.info;
+        if (tokenType === "SOL") {
+          recipient = info?.destination || "Unknown";
+          amount = info?.lamports ? Number(info.lamports) / LAMPORTS_PER_SOL : 0;
+          tokenSymbol = "SOL";
+        } else {
+          const destinationATA = info?.destination;
+          recipient = destinationATA || "Unknown";
+          
+          const rawAmount = info?.tokenAmount?.amount ?? info?.amount;
+          
+          if (transferInstruction.parsed.type === "transferChecked") {
+            mintAddress = info?.mint;
+          }
+          
+          const accountKeys = tx.transaction.message.accountKeys;
+          const postBalances = tx.meta?.postTokenBalances || [];
+          
+          if (destinationATA) {
+            const destIndex = accountKeys.findIndex((acc: any) => {
+              if (!acc) return false;
+              if (acc.pubkey && typeof acc.pubkey.toBase58 === "function") {
+                return acc.pubkey.toBase58() === destinationATA;
+              }
+              if (typeof acc.toBase58 === "function") {
+                return acc.toBase58() === destinationATA;
+              }
+              return String(acc) === destinationATA;
+            });
+            
+            if (destIndex !== -1) {
+              const balanceEntry = postBalances.find(b => b.accountIndex === destIndex);
+              if (balanceEntry) {
+                if (!mintAddress) {
+                  mintAddress = balanceEntry.mint;
+                }
+                decimals = balanceEntry.uiTokenAmount.decimals;
+                if (balanceEntry.owner) {
+                  recipient = balanceEntry.owner;
+                }
+              }
+            }
+          }
+          
+          if (!mintAddress && postBalances.length > 0) {
+            mintAddress = postBalances[0].mint;
+            decimals = postBalances[0].uiTokenAmount.decimals;
+          }
+          
+          if (mintAddress) {
+            const USDC_MAINNET = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+            const USDC_DEVNET = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
+            const USDT_MAINNET = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB";
+            const USDT_DEVNET = "EJwZgeZrdC8TXTQbQBoL6bfuAnFUQYhy8jxToFdpknit";
+            
+            if (mintAddress === USDC_MAINNET || mintAddress === USDC_DEVNET) {
+              tokenSymbol = "USDC";
+            } else if (mintAddress === USDT_MAINNET || mintAddress === USDT_DEVNET) {
+              tokenSymbol = "USDT";
+            } else {
+              tokenSymbol = "Token";
+            }
+          } else {
+            tokenSymbol = "Token";
+          }
+          
+          const divisor = 10 ** decimals;
+          amount = rawAmount ? Number(rawAmount) / divisor : 0;
+        }
+      } else {
+        recipient = "Contract Interaction";
+      }
 
       setDetails({
         status: tx.meta?.err ? "failed" : "success",
         sender,
         recipient,
         amount,
+        token: tokenSymbol,
+        mint: mintAddress || undefined,
         slot: tx.slot,
         timestamp: tx.blockTime
           ? new Date(tx.blockTime * 1000).toLocaleString()
@@ -255,7 +358,7 @@ export default function VerifyPage() {
                     </p>
                     <h4 className="text-5xl font-black text-primary italic tracking-tighter">
                       {details.amount}
-                      <span className="text-[20px] not-italic opacity-40"> SOL</span>
+                      <span className="text-[20px] not-italic opacity-40"> {details.token}</span>
                     </h4>
                   </div>
                   <div className="mt-8 space-y-2">
@@ -267,6 +370,20 @@ export default function VerifyPage() {
                       <span className="text-white/40 uppercase">Confirmed at</span>
                       <span className="text-white">{details.timestamp}</span>
                     </div>
+                    {details.mint && (
+                      <div className="flex justify-between text-[10px] font-bold">
+                        <span className="text-white/40 uppercase">Token Mint</span>
+                        <a
+                          href={`https://solscan.io/token/${details.mint}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline font-mono flex items-center gap-1"
+                        >
+                          {details.mint.slice(0, 6)}...{details.mint.slice(-6)}
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      </div>
+                    )}
                   </div>
                   <div className="absolute top-0 right-0 p-4 opacity-5">
                     <Database className="w-20 h-20 text-white" />
