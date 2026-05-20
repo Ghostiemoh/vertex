@@ -125,6 +125,32 @@ export default function ContractPage() {
       }
 
       const doc = new jsPDF() as ContractPdf;
+
+      // Load Bookman Old Style fonts
+      let fontName = "times"; // Fallback to times (serif) for the contract/agreement
+      try {
+        const [regularRes, boldRes] = await Promise.all([
+          fetch("/fonts/BOOKOS.TTF"),
+          fetch("/fonts/BOOKOSB.TTF")
+        ]);
+        if (regularRes.ok && boldRes.ok) {
+          const [regularBuffer, boldBuffer] = await Promise.all([
+            regularRes.arrayBuffer(),
+            boldRes.arrayBuffer()
+          ]);
+          const regularBase64 = Buffer.from(regularBuffer).toString("base64");
+          const boldBase64 = Buffer.from(boldBuffer).toString("base64");
+          
+          doc.addFileToVFS("BOOKOS.TTF", regularBase64);
+          doc.addFont("BOOKOS.TTF", "BookmanOldStyle", "normal");
+          doc.addFileToVFS("BOOKOSB.TTF", boldBase64);
+          doc.addFont("BOOKOSB.TTF", "BookmanOldStyle", "bold");
+          fontName = "BookmanOldStyle";
+        }
+      } catch (err) {
+        console.error("Failed to load Bookman Old Style font, falling back to times", err);
+      }
+
       const pageWidth = 210;
       const margin = 20;
       const contentWidth = pageWidth - margin * 2;
@@ -140,7 +166,7 @@ export default function ContractPage() {
 
       /* ── TITLE ── */
       doc.setFontSize(18);
-      doc.setFont("times", "bold");
+      doc.setFont(fontName, "bold");
       doc.setTextColor(...black);
       doc.text("FREELANCER SERVICES AGREEMENT", pageWidth / 2, cursorY, { align: "center" });
 
@@ -148,7 +174,7 @@ export default function ContractPage() {
       
       /* ── INTRO ── */
       doc.setFontSize(11);
-      doc.setFont("times", "normal");
+      doc.setFont(fontName, "normal");
       doc.setTextColor(...darkGray);
       
       const introText = `This Freelancer Services Agreement (“Agreement”) is entered into on ${contractDate ? new Date(contractDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}, by and between:
@@ -181,13 +207,13 @@ The Company and the Freelancer are collectively referred to as the “Parties”
         }
 
         doc.setFontSize(11);
-        doc.setFont("times", "bold");
+        doc.setFont(fontName, "bold");
         doc.setTextColor(...black);
         doc.text(provision.title, margin, cursorY);
         cursorY += 6;
 
         doc.setFontSize(10.5);
-        doc.setFont("times", "normal");
+        doc.setFont(fontName, "normal");
         doc.setTextColor(...darkGray);
         const bodyLines = doc.splitTextToSize(provision.body, contentWidth);
         doc.text(bodyLines, margin, cursorY);
@@ -208,10 +234,10 @@ The Company and the Freelancer are collectively referred to as the “Parties”
       doc.line(margin, cursorY, margin + sigWidth, cursorY);
       
       doc.setFontSize(10);
-      doc.setFont("times", "bold");
+      doc.setFont(fontName, "bold");
       doc.setTextColor(...black);
       doc.text("Freelancer", margin, cursorY + 5);
-      doc.setFont("times", "normal");
+      doc.setFont(fontName, "normal");
       doc.setFontSize(9);
       doc.text(contractorName || "—", margin, cursorY + 9);
       if (signatureBase58) {
@@ -228,10 +254,10 @@ The Company and the Freelancer are collectively referred to as the “Parties”
       doc.line(clientSigX, cursorY, pageWidth - margin, cursorY);
 
       doc.setFontSize(10);
-      doc.setFont("times", "bold");
+      doc.setFont(fontName, "bold");
       doc.setTextColor(...black);
       doc.text("Company", clientSigX, cursorY + 5);
-      doc.setFont("times", "normal");
+      doc.setFont(fontName, "normal");
       doc.setFontSize(9);
       doc.text(clientName || "—", clientSigX, cursorY + 9);
       doc.text("Date: _______________", clientSigX, cursorY + 17);
@@ -240,7 +266,7 @@ The Company and the Freelancer are collectively referred to as the “Parties”
       doc.addPage();
       cursorY = 25;
       doc.setFontSize(16);
-      doc.setFont("times", "bold");
+      doc.setFont(fontName, "bold");
       doc.setTextColor(...black);
       doc.text("ANNEXURE A", pageWidth / 2, cursorY, { align: "center" });
       cursorY += 8;
@@ -265,13 +291,13 @@ The Company and the Freelancer are collectively referred to as the “Parties”
           fontSize: 10,
           halign: "center",
           valign: "middle",
-          font: "times"
+          font: fontName
         },
         bodyStyles: {
           textColor: [60, 60, 60],
           fontSize: 10,
           valign: "middle",
-          font: "times"
+          font: fontName
         },
         margin: { left: margin, right: margin }
       });
@@ -281,7 +307,7 @@ The Company and the Freelancer are collectively referred to as the “Parties”
         doc.addPage();
         cursorY = 30;
         doc.setFontSize(18);
-        doc.setFont("times", "bold");
+        doc.setFont(fontName, "bold");
         doc.setTextColor(...black);
         doc.text("CERTIFICATE OF CRYPTOGRAPHIC COMPLETION", pageWidth / 2, cursorY, { align: "center" });
         cursorY += 18;
@@ -299,7 +325,7 @@ The Company and the Freelancer are collectively referred to as the “Parties”
         doc.text("VERIFY ON-CHAIN", qrX + qrSize/2, qrY + qrSize + 6, { align: "center" });
 
         doc.setFontSize(11);
-        doc.setFont("times", "normal");
+        doc.setFont(fontName, "normal");
         doc.setTextColor(...darkGray);
         
         const certText = `This document provides cryptographic proof that the Freelancer Services Agreement was signed on-chain by the specified Solana wallet address. This ensures non-repudiation and verifies the exact terms agreed upon at the time of signing.`;
@@ -308,36 +334,36 @@ The Company and the Freelancer are collectively referred to as the “Parties”
         cursorY += certLines.length * 6 + 12;
 
         doc.setFontSize(12);
-        doc.setFont("times", "bold");
+        doc.setFont(fontName, "bold");
         doc.setTextColor(...black);
         doc.text("Cryptographic Record", margin, cursorY);
         cursorY += 10;
 
         doc.setFontSize(10);
-        doc.setFont("times", "normal");
+        doc.setFont(fontName, "normal");
         
-        doc.setFont("times", "bold");
+        doc.setFont(fontName, "bold");
         doc.text("Signer Wallet:", margin, cursorY);
-        doc.setFont("times", "normal");
+        doc.setFont(fontName, "normal");
         doc.text(effectiveWallet || "Unknown", margin + 35, cursorY);
         cursorY += 7;
   
-        doc.setFont("times", "bold");
+        doc.setFont(fontName, "bold");
         doc.text("Timestamp:", margin, cursorY);
-        doc.setFont("times", "normal");
+        doc.setFont(fontName, "normal");
         doc.text(new Date().toISOString(), margin + 35, cursorY);
         cursorY += 7;
   
-        doc.setFont("times", "bold");
+        doc.setFont(fontName, "bold");
         doc.text("Network:", margin, cursorY);
-        doc.setFont("times", "normal");
+        doc.setFont(fontName, "normal");
         doc.text(NETWORK_LABEL, margin + 35, cursorY);
         cursorY += 12;
   
-        doc.setFont("times", "bold");
+        doc.setFont(fontName, "bold");
         doc.text("Signed Message Hash:", margin, cursorY);
         cursorY += 6;
-        doc.setFont("times", "normal");
+        doc.setFont(fontName, "normal");
         doc.setFontSize(8);
         doc.setTextColor(...accent);
         const sigLines = doc.splitTextToSize(signatureBase58, contentWidth);
@@ -345,11 +371,11 @@ The Company and the Freelancer are collectively referred to as the “Parties”
         cursorY += sigLines.length * 5 + 12;
   
         doc.setFontSize(10);
-        doc.setFont("times", "bold");
+        doc.setFont(fontName, "bold");
         doc.setTextColor(...black);
         doc.text("Original Message Content:", margin, cursorY);
         cursorY += 6;
-        doc.setFont("times", "normal");
+        doc.setFont(fontName, "normal");
         doc.setTextColor(...darkGray);
         const msgLines = doc.splitTextToSize(signedMessage, contentWidth);
         doc.text(msgLines, margin, cursorY);
@@ -359,6 +385,7 @@ The Company and the Freelancer are collectively referred to as the “Parties”
       const totalPages = doc.internal.getNumberOfPages();
       for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
         doc.setPage(pageNum);
+        doc.setFont(fontName, "normal");
         
         // Simulated 1D Barcode
         const bcX = pageWidth - margin - 35;
@@ -524,7 +551,7 @@ The Company and the Freelancer are collectively referred to as the “Parties”
                 <p className="text-[10px] font-black uppercase tracking-widest text-primary italic">Live Document Preview</p>
               </div>
 
-              <div className="bg-white p-12 min-h-[1000px] text-zinc-900 font-sans leading-relaxed selection:bg-primary/20">
+              <div className="bg-white p-12 min-h-[1000px] text-zinc-900 font-bookman leading-relaxed selection:bg-primary/20">
                 {/* Title */}
                 <h1 className="text-xl font-bold text-center mb-12 tracking-tight">FREELANCER SERVICES AGREEMENT</h1>
                 

@@ -202,6 +202,32 @@ export default function InvoicePage() {
     await new Promise(r => setTimeout(r, 0));
 
     const doc = new jsPDF() as InvoicePdf;
+
+    // Load Bookman Old Style fonts
+    let fontName = "helvetica";
+    try {
+      const [regularRes, boldRes] = await Promise.all([
+        fetch("/fonts/BOOKOS.TTF"),
+        fetch("/fonts/BOOKOSB.TTF")
+      ]);
+      if (regularRes.ok && boldRes.ok) {
+        const [regularBuffer, boldBuffer] = await Promise.all([
+          regularRes.arrayBuffer(),
+          boldRes.arrayBuffer()
+        ]);
+        const regularBase64 = Buffer.from(regularBuffer).toString("base64");
+        const boldBase64 = Buffer.from(boldBuffer).toString("base64");
+        
+        doc.addFileToVFS("BOOKOS.TTF", regularBase64);
+        doc.addFont("BOOKOS.TTF", "BookmanOldStyle", "normal");
+        doc.addFileToVFS("BOOKOSB.TTF", boldBase64);
+        doc.addFont("BOOKOSB.TTF", "BookmanOldStyle", "bold");
+        fontName = "BookmanOldStyle";
+      }
+    } catch (err) {
+      console.error("Failed to load Bookman Old Style font, falling back to helvetica", err);
+    }
+
     const pageWidth = 210;
     const margin = 20;
     const contentWidth = pageWidth - margin * 2;
@@ -215,13 +241,13 @@ export default function InvoicePage() {
     let cursorY = 25;
 
     /* ── HEADER ── */
-    doc.setFont("helvetica", "bold");
+    doc.setFont(fontName, "bold");
     doc.setFontSize(18);
     doc.setTextColor(...black);
     doc.text((vendorName || "MUHAMMAD AUWAL ABDULAZIZ").toUpperCase(), pageWidth / 2, cursorY, { align: "center" });
     cursorY += 8;
 
-    doc.setFont("helvetica", "normal");
+    doc.setFont(fontName, "normal");
     doc.setFontSize(10);
     doc.setTextColor(...darkGray);
     const headerInfo = [];
@@ -244,19 +270,19 @@ export default function InvoicePage() {
 
     /* ── TITLE ── */
     doc.setFontSize(26);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(fontName, "bold");
     doc.setTextColor(...black);
     doc.text("INVOICE", margin, cursorY);
     cursorY += 15;
 
     /* ── META INFO (From/To) ── */
     doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(fontName, "bold");
     doc.text("From:", margin, cursorY);
     doc.text("To:", margin + 95, cursorY);
     cursorY += 5;
 
-    doc.setFont("helvetica", "normal");
+    doc.setFont(fontName, "normal");
     doc.setTextColor(...darkGray);
     const fromText = doc.splitTextToSize(vendorName || "—", 80);
     const toText = doc.splitTextToSize(clientName || "—", 80);
@@ -268,7 +294,7 @@ export default function InvoicePage() {
 
     // Invoice Details (Number/Date)
     doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(fontName, "bold");
     doc.setTextColor(...black);
     doc.text(`Invoice Number: ${invoiceNumber}`, margin, cursorY);
     doc.text(`Invoice Date: ${currentDate}`, margin + 95, cursorY);
@@ -293,13 +319,13 @@ export default function InvoicePage() {
         fontStyle: "bold",
         fontSize: 10,
         halign: "left",
-        font: "helvetica"
+        font: fontName
       },
       bodyStyles: {
         textColor: [60, 60, 60],
         fontSize: 10,
         valign: "middle",
-        font: "helvetica"
+        font: fontName
       },
       columnStyles: {
         2: { halign: "right" }
@@ -311,24 +337,24 @@ export default function InvoicePage() {
 
     /* ── CRYPTO PAYMENT DETAILS ── */
     doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(fontName, "bold");
     doc.setTextColor(...black);
     doc.text("Crypto Payment Details", margin, cursorY);
     cursorY += 8;
 
     doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(fontName, "normal");
     doc.setTextColor(...darkGray);
     doc.text("Accepted Networks: Solana", margin, cursorY);
     cursorY += 5;
     doc.text(`Preferred Token: ${token}`, margin, cursorY);
     cursorY += 6;
     
-    doc.setFont("helvetica", "bold");
+    doc.setFont(fontName, "bold");
     doc.text("Secure Payment Link:", margin, cursorY);
     cursorY += 4;
     
-    doc.setFont("helvetica", "normal");
+    doc.setFont(fontName, "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(0, 102, 204); // Link blue
     const displayLink = paymentId.length > 30
@@ -352,7 +378,7 @@ export default function InvoicePage() {
     
     doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
     
-    doc.setFont("helvetica", "bold");
+    doc.setFont(fontName, "bold");
     doc.setFontSize(8);
     doc.setTextColor(...black);
     doc.text("SCAN TO PAY", qrX + qrSize/2, qrY + qrSize + 6, { align: "center" });
@@ -363,12 +389,12 @@ export default function InvoicePage() {
     // Compact 2-row block. Network + Verify URL live in the Crypto Payment Details
     // section above; this block only adds what isn't already on the invoice.
     doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(fontName, "bold");
     doc.setTextColor(...black);
     doc.text("On-Chain Metadata", margin, cursorY);
     cursorY += 6;
 
-    doc.setFont("helvetica", "normal");
+    doc.setFont(fontName, "normal");
     doc.setFontSize(8);
     doc.setTextColor(...darkGray);
 
@@ -382,9 +408,9 @@ export default function InvoicePage() {
 
     const labelColumnWidth = 38;
     metadataRows.forEach(([label, value]) => {
-      doc.setFont("helvetica", "bold");
+      doc.setFont(fontName, "bold");
       doc.text(`${label}:`, margin, cursorY);
-      doc.setFont("helvetica", "normal");
+      doc.setFont(fontName, "normal");
       const wrapped = doc.splitTextToSize(value, contentWidth - labelColumnWidth);
       doc.text(wrapped, margin + labelColumnWidth, cursorY);
       cursorY += wrapped.length * 4 + 2;
@@ -393,13 +419,13 @@ export default function InvoicePage() {
 
     /* ── PAYMENT TERMS ── */
     doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(fontName, "bold");
     doc.setTextColor(...black);
     doc.text("Payment Terms", margin, cursorY);
     cursorY += 8;
 
     doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(fontName, "normal");
     doc.setTextColor(...darkGray);
     const terms = [
       `• Terms: Payment is due within ${dueDate ? Math.ceil((new Date(dueDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24)) : 7} days of the invoice date as per the agreement.`,
@@ -411,10 +437,10 @@ export default function InvoicePage() {
 
     /* ── NOTES ── */
     if (notes) {
-      doc.setFont("helvetica", "bold");
+      doc.setFont(fontName, "bold");
       doc.text("Notes:", margin, cursorY);
       cursorY += 5;
-      doc.setFont("helvetica", "normal");
+      doc.setFont(fontName, "normal");
       const noteLines = doc.splitTextToSize(notes, contentWidth);
       doc.text(noteLines, margin, cursorY);
     }
@@ -424,7 +450,7 @@ export default function InvoicePage() {
     const totalPages = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
-      doc.setFont("helvetica", "normal");
+      doc.setFont(fontName, "normal");
       
       // Simulated 1D Barcode
       const bcX = pageWidth - margin - 35;
@@ -698,7 +724,7 @@ ${paymentLink}`;
                 <p className="text-[10px] font-black uppercase tracking-widest text-primary italic">Live Archive Preview</p>
               </div>
 
-              <div className="bg-white rounded-xl p-10 min-h-[842px] flex flex-col text-black font-sans leading-relaxed border border-zinc-100">
+              <div className="bg-white rounded-xl p-10 min-h-[842px] flex flex-col text-black font-bookman leading-relaxed border border-zinc-100">
                 {/* ── HEADER: Name + contact info line ── */}
                 <div className="mb-8 text-center">
                   <h1 className="text-xl font-bold tracking-tight mb-2">{(vendorName || "YOUR NAME / ORGANIZATION").toUpperCase()}</h1>

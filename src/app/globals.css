@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Bookman Old Style';
+  src: url('/fonts/BOOKOS.TTF') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Bookman Old Style';
+  src: url('/fonts/BOOKOSB.TTF') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
+
 :root {
   --background: oklch(0.98 0 0);
   --foreground: oklch(0.15 0 0);
@@ -46,6 +60,7 @@
 }
 
 @theme inline {
+  --font-bookman: "Bookman Old Style", Georgia, serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);

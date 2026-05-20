@@ -148,6 +148,7 @@ export default function VerifyPage() {
           const postBalances = tx.meta?.postTokenBalances || [];
           
           if (destinationATA) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const destIndex = accountKeys.findIndex((acc: any) => {
               if (!acc) return false;
               if (acc.pubkey && typeof acc.pubkey.toBase58 === "function") {
