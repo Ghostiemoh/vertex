@@ -23,6 +23,8 @@ import {
   getPaymentUrl,
   getTokenDecimals,
   getTokenMint,
+  paymentRequestFromRow,
+  type PaymentRequest,
   type PaymentToken,
 } from "@/lib/payment-utils";
 import {
@@ -32,6 +34,25 @@ import {
 } from "@/lib/config";
 import { getOrigin } from "@/lib/utils";
 import { withRpcFallback } from "@/lib/rpc";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+
+// Resolve a /pay/[id] slug to a PaymentRequest. Prefers a payment_requests DB
+// row (short-ID URLs); falls back to decoding the legacy base64 payload so old
+// invoice links and /get-paid direct links keep working.
+async function resolvePaymentRequest(id: string): Promise<PaymentRequest | null> {
+  const supabaseAdmin = getSupabaseAdmin();
+  if (supabaseAdmin) {
+    const { data } = await supabaseAdmin
+      .from("payment_requests")
+      .select("network, recipient_wallet, amount, token, description, label, memo, invoice_id")
+      .eq("id", id)
+      .maybeSingle();
+    if (data) {
+      return paymentRequestFromRow(data, id);
+    }
+  }
+  return decodePaymentRequest(id);
+}
 
 export async function GET(
   _req: Request,
@@ -39,7 +60,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const paymentReq = decodePaymentRequest(id);
+    const paymentReq = await resolvePaymentRequest(id);
 
     if (!paymentReq) {
       return Response.json(
@@ -110,7 +131,7 @@ export async function POST(
     }
 
     const payerPubkey = new PublicKey(parsedBody.data.account);
-    const request = decodePaymentRequest(id);
+    const request = await resolvePaymentRequest(id);
 
     if (!request) {
       return Response.json(

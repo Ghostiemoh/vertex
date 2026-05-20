@@ -7,8 +7,8 @@ import Image from "next/image";
 import { Download, Send, Plus, Trash2, User, Building, Calendar, Hash, Loader2, ShieldCheck, AlertCircle, Share2 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { encodePaymentRequest, type PaymentToken } from "@/lib/payment-utils";
-import { VERTEX_NETWORK, NETWORK_LABEL } from "@/lib/config";
+import { encodePaymentRequest, generateShortPaymentId, type PaymentToken } from "@/lib/payment-utils";
+import { VERTEX_NETWORK } from "@/lib/config";
 import { getOrigin } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/Toast";
@@ -151,15 +151,53 @@ export default function InvoicePage() {
     }
 
     const paymentAmount = isMilestone ? total / 2 : total;
+    const description = isMilestone
+      ? `50% Milestone: Invoice ${invoiceNumber} from ${vendorName}`
+      : `Invoice ${invoiceNumber} from ${vendorName}`;
+    const memo = `Vertex-INV:${invoiceNumber}|To:${clientName}|Sum:${paymentAmount} ${token}${isMilestone ? "|Milestone" : ""}`;
 
-    const encoded = encodePaymentRequest({
-      recipient: effectiveWallet,
-      amount: paymentAmount,
-      token,
-      description: isMilestone ? `50% Milestone: Invoice ${invoiceNumber} from ${vendorName}` : `Invoice ${invoiceNumber} from ${vendorName}`,
-      memo: `Vertex-INV:${invoiceNumber}|To:${clientName}|Sum:${paymentAmount} ${token}${isMilestone ? '|Milestone' : ''}`,
-    });
-    const paymentLink = `${getOrigin()}/pay/${encoded}`;
+    // Resolve the payment ID. For authenticated users we insert a payment_requests
+    // row keyed on a short random ID, so the URL stays compact (~12 chars). For
+    // unauthenticated users (or if the DB insert fails) we fall back to the legacy
+    // base64-encoded payload so the link still resolves via the API route's decode
+    // fallback. Either way `paymentId` is what ends up in the URL and the QR code.
+    let paymentId = "";
+    let storedPaymentId: string | null = null;
+
+    if (supabase && isAuthenticated && user?.id) {
+      const shortId = generateShortPaymentId();
+      const { error: prError } = await supabase.from("payment_requests").insert({
+        id: shortId,
+        auth_user_id: user.id,
+        source: "invoice",
+        label: invoiceNumber,
+        description,
+        network: VERTEX_NETWORK,
+        recipient_wallet: effectiveWallet,
+        amount: paymentAmount,
+        token,
+        memo,
+        payment_status: "sent",
+      });
+
+      if (!prError) {
+        paymentId = shortId;
+        storedPaymentId = shortId;
+      }
+    }
+
+    if (!paymentId) {
+      paymentId = encodePaymentRequest({
+        recipient: effectiveWallet,
+        amount: paymentAmount,
+        token,
+        description,
+        memo,
+      });
+      // storedPaymentId stays null — invoices.payment_id FK requires payment_requests row.
+    }
+
+    const paymentLink = `${getOrigin()}/pay/${paymentId}`;
     const qrDataUrl = await QRCode.toDataURL(paymentLink, { margin: 1, width: 300 });
     await new Promise(r => setTimeout(r, 0));
 
@@ -319,6 +357,8 @@ export default function InvoicePage() {
     cursorY += Math.max(linkLines.length * 3.5 + 10, qrSize + 15);
 
     /* ── ON-CHAIN METADATA ── */
+    // Compact 2-row block. Network + Verify URL live in the Crypto Payment Details
+    // section above; this block only adds what isn't already on the invoice.
     doc.setFontSize(10);
     doc.setFont("times", "bold");
     doc.setTextColor(...black);
@@ -330,13 +370,11 @@ export default function InvoicePage() {
     doc.setTextColor(...darkGray);
 
     const metadataRows: [string, string][] = [
-      ["Network", `Solana (${NETWORK_LABEL})`],
       ["Issuer wallet", effectiveWallet || "—"],
       [
         "Vertex Auth signature",
-        signatureBase58 ? `${signatureBase58.slice(0, 32)}…` : "Not signed (vendor wallet not connected at issue)",
+        signatureBase58 ? `${signatureBase58.slice(0, 32)}...` : "Not signed (vendor wallet not connected at issue)",
       ],
-      ["Verify on-chain", paymentLink],
     ];
 
     const labelColumnWidth = 38;
@@ -348,15 +386,7 @@ export default function InvoicePage() {
       doc.text(wrapped, margin + labelColumnWidth, cursorY);
       cursorY += wrapped.length * 4 + 2;
     });
-    // Clickable hotspot on the verify-on-chain URL (last row).
-    doc.link(
-      margin + labelColumnWidth,
-      cursorY - 6,
-      contentWidth - labelColumnWidth,
-      4,
-      { url: paymentLink }
-    );
-    cursorY += 6;
+    cursorY += 4;
 
     /* ── PAYMENT TERMS ── */
     doc.setFontSize(12);
@@ -422,7 +452,10 @@ export default function InvoicePage() {
           token,
           items: items.map(i => ({ description: i.description, qty: i.qty, rate: i.rate, amount: i.qty * i.rate })),
           due_date: dueDate || null,
-          payment_id: encoded,
+          // payment_id FKs to payment_requests.id. Only set when the short-ID
+          // insert succeeded; for fallback base64 URLs we leave it null to avoid
+          // a foreign-key violation.
+          payment_id: storedPaymentId,
           payment_payload: { paymentLink, token, amount: total },
           network: VERTEX_NETWORK,
           recipient_wallet: effectiveWallet,
@@ -433,8 +466,8 @@ export default function InvoicePage() {
     } catch {
       // Non-critical: local PDF is already generated
     }
-    
-    return { doc, paymentLink, signatureBase58, encoded };
+
+    return { doc, paymentLink, signatureBase58, paymentId };
   };
 
   /* ── Export Action ── */

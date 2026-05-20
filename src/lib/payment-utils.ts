@@ -85,6 +85,27 @@ export function calculatePaymentBreakdown(amount: number): PaymentBreakdown {
   };
 }
 
+// Generate a short, URL-safe payment ID. ~64 bits of entropy via Web Crypto;
+// stored as the primary key on a payment_requests row so the URL stays short
+// instead of carrying the full payload base64-encoded.
+export function generateShortPaymentId(): string {
+  const bytes =
+    typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function"
+      ? crypto.getRandomValues(new Uint8Array(9))
+      : (() => {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const nodeCrypto = require("crypto") as typeof import("crypto");
+          return nodeCrypto.randomBytes(9);
+        })();
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  const base64 =
+    typeof btoa !== "undefined"
+      ? btoa(binary)
+      : Buffer.from(binary, "binary").toString("base64");
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 export function encodePaymentRequest(request: Omit<PaymentRequest, "id" | "version" | "network"> & {
   network?: PaymentRequest["network"];
 }): string {
@@ -104,6 +125,41 @@ export function encodePaymentRequest(request: Omit<PaymentRequest, "id" | "versi
   const json = JSON.stringify(payload);
   const base64 = Buffer.from(json).toString("base64");
   return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+// Shape of the columns we read from public.payment_requests when building a
+// PaymentRequest from a short-ID lookup. Kept minimal — only the fields the
+// payment + Action routes actually need to construct a transaction.
+export interface PaymentRequestRowFields {
+  network: PaymentRequest["network"];
+  recipient_wallet: string;
+  amount: number | string;
+  token: PaymentToken;
+  description?: string | null;
+  label?: string | null;
+  memo?: string | null;
+  invoice_id?: string | null;
+}
+
+// Build a PaymentRequest from a DB row. Used when the URL slug resolves to a
+// payment_requests row (short-ID flow). The legacy base64-encoded URL flow keeps
+// using decodePaymentRequest().
+export function paymentRequestFromRow(
+  row: PaymentRequestRowFields,
+  id: string
+): PaymentRequest {
+  return {
+    id,
+    version: 1,
+    network: row.network,
+    recipient: row.recipient_wallet,
+    amount: Number(row.amount),
+    token: row.token,
+    description: row.description ?? undefined,
+    label: row.label ?? undefined,
+    memo: row.memo ?? undefined,
+    invoiceId: row.invoice_id ?? undefined,
+  };
 }
 
 export function decodePaymentRequest(encoded: string): PaymentRequest | null {

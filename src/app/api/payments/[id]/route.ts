@@ -5,6 +5,7 @@ import {
   calculatePaymentBreakdown,
   decodePaymentRequest,
   getTokenMint,
+  paymentRequestFromRow,
   toAtomicUnits,
   type PaymentRequest,
   type PaymentToken,
@@ -332,12 +333,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const request = decodePaymentRequest(id);
-
-  if (!request) {
-    return NextResponse.json({ error: "Invalid payment link." }, { status: 400 });
-  }
-
   const supabaseAdmin = getSupabaseAdmin();
   let invoice: InvoiceRow | null = null;
   let paymentRequest: PaymentRequestRow | null = null;
@@ -362,7 +357,20 @@ export async function GET(
 
     invoice = (invoiceData as InvoiceRow | null) ?? null;
     paymentRequest = (paymentData as PaymentRequestRow | null) ?? null;
+  }
 
+  // Prefer the DB row when available (short-ID URLs); fall back to decoding the
+  // legacy base64-encoded payload so direct /get-paid links and pre-short-ID
+  // invoice URLs keep resolving.
+  const request: PaymentRequest | null = paymentRequest
+    ? paymentRequestFromRow(paymentRequest, id)
+    : decodePaymentRequest(id);
+
+  if (!request) {
+    return NextResponse.json({ error: "Invalid payment link." }, { status: 400 });
+  }
+
+  if (supabaseAdmin) {
     if (invoice?.status === "sent") {
       await supabaseAdmin
         .from("invoices")
@@ -447,11 +455,6 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const request = decodePaymentRequest(id);
-
-  if (!request) {
-    return NextResponse.json({ error: "Invalid payment link." }, { status: 400 });
-  }
 
   const ip = extractClientIp(req);
   const rate = checkRateLimit({
@@ -515,6 +518,16 @@ export async function POST(
     ]);
     invoice = (invoiceData as InvoiceRow | null) ?? null;
     paymentRequest = (paymentData as PaymentRequestRow | null) ?? null;
+  }
+
+  // Same DB-first / decode-fallback resolution as GET. Doing it after the rate
+  // limit + Zod check keeps unauthenticated bad payloads from hitting the DB.
+  const request: PaymentRequest | null = paymentRequest
+    ? paymentRequestFromRow(paymentRequest, id)
+    : decodePaymentRequest(id);
+
+  if (!request) {
+    return NextResponse.json({ error: "Invalid payment link." }, { status: 400 });
   }
 
   // --- Idempotency Check ---
