@@ -180,7 +180,7 @@ export default function InvoicePage() {
     doc.setFont("times", "bold");
     doc.setFontSize(18);
     doc.setTextColor(...black);
-    doc.text((vendorName || "MUHAMMAD AUWAL ABDULAZIZ").toUpperCase(), margin, cursorY);
+    doc.text((vendorName || "MUHAMMAD AUWAL ABDULAZIZ").toUpperCase(), pageWidth / 2, cursorY, { align: "center" });
     cursorY += 8;
 
     doc.setFont("times", "normal");
@@ -193,8 +193,11 @@ export default function InvoicePage() {
     
     const headerStr = headerInfo.join(" | ");
     const headerLines = doc.splitTextToSize(headerStr, contentWidth);
-    doc.text(headerLines, margin, cursorY);
-    cursorY += headerLines.length * 4 + 4;
+    headerLines.forEach((line: string) => {
+      doc.text(line, pageWidth / 2, cursorY, { align: "center" });
+      cursorY += 4;
+    });
+    cursorY += 4;
 
     // Divider
     doc.setDrawColor(...lineGray);
@@ -278,7 +281,7 @@ export default function InvoicePage() {
     doc.setFontSize(10);
     doc.setFont("times", "normal");
     doc.setTextColor(...darkGray);
-    doc.text(`Network: Solana (${NETWORK_LABEL})`, margin, cursorY);
+    doc.text("Accepted Networks: Solana", margin, cursorY);
     cursorY += 5;
     doc.text(`Preferred Token: ${token}`, margin, cursorY);
     cursorY += 6;
@@ -660,12 +663,12 @@ ${paymentLink}`;
 
               <div className="bg-white rounded-xl p-10 min-h-[842px] flex flex-col text-black font-serif leading-relaxed border border-zinc-100">
                 {/* ── HEADER: Name + contact info line ── */}
-                <div className="mb-8">
+                <div className="mb-8 text-center">
                   <h1 className="text-xl font-bold tracking-tight mb-2">{(vendorName || "YOUR NAME / ORGANIZATION").toUpperCase()}</h1>
-                  <p className="text-[11px] text-zinc-500 leading-relaxed">
+                  <p className="text-[11px] text-zinc-500 leading-relaxed max-w-md mx-auto">
                     {vendorAddress && <>Address: {vendorAddress.replace(/\n/g, ", ")}.</>}
                     {vendorPhone && <><br />Phone number: {vendorPhone}</>}
-                    {vendorEmail && <>| Mail: {vendorEmail}</>}
+                    {vendorEmail && <> | Mail: {vendorEmail}</>}
                   </p>
                   <div className="mt-6 h-px bg-zinc-200" />
                 </div>
@@ -735,7 +738,7 @@ ${paymentLink}`;
                 <div className="mb-10">
                   <h3 className="text-sm font-bold text-black mb-3 uppercase tracking-wide">Crypto Payment Details</h3>
                   <div className="space-y-2 text-[11px] text-zinc-700">
-                    <p><span className="font-bold">Accepted Networks:</span> Solana / Base / Polygon</p>
+                    <p><span className="font-bold">Accepted Networks:</span> Solana</p>
                     <p><span className="font-bold">Preferred Token:</span> {token}</p>
                     <div className="pt-2 flex justify-between items-end gap-6">
                       <div className="flex-grow min-w-0">
