@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import useSWR from "swr";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
   ArrowRight,
   ArrowUpRight,
   BarChart3,
   CheckCircle2,
+  ChevronDown,
   Clock,
   Copy,
   FileCheck,
@@ -21,6 +22,7 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import { PaymentTimeline, type PaymentTimelineEvent } from "@/components/PaymentTimeline";
 import { ProtocolPulse } from "@/components/ProtocolPulse";
 import { ReputationWidget } from "@/components/ReputationWidget";
 import { Sparkline } from "@/components/Sparkline";
@@ -29,6 +31,13 @@ import { useSession } from "@/components/SessionProvider";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/Toast";
 import { getStatusLabel, mapLegacyInvoiceStatus } from "@/lib/payments";
+
+interface LifecycleState {
+  loading: boolean;
+  error: string | null;
+  events: PaymentTimelineEvent[];
+  createdAt: string;
+}
 
 interface InvoiceRecord {
   id: string;
@@ -95,6 +104,53 @@ export default function Dashboard() {
   const { user, isAuthenticated } = useSession();
   const { toast } = useToast();
   const isDemo = !isAuthenticated;
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [lifecycleById, setLifecycleById] = useState<Record<string, LifecycleState>>({});
+
+  const toggleLifecycle = async (invoice: { id: string; payment_id: string | null; created_at: string }) => {
+    if (!invoice.payment_id) return;
+
+    if (expandedId === invoice.id) {
+      setExpandedId(null);
+      return;
+    }
+
+    setExpandedId(invoice.id);
+
+    if (lifecycleById[invoice.id]?.events.length || lifecycleById[invoice.id]?.loading) return;
+
+    setLifecycleById((prev) => ({
+      ...prev,
+      [invoice.id]: { loading: true, error: null, events: [], createdAt: invoice.created_at },
+    }));
+
+    try {
+      const res = await fetch(`/api/payments/${invoice.payment_id}`);
+      if (!res.ok) {
+        throw new Error(res.status === 404 ? "Lifecycle history not found" : "Failed to load lifecycle history");
+      }
+      const data = await res.json();
+      setLifecycleById((prev) => ({
+        ...prev,
+        [invoice.id]: {
+          loading: false,
+          error: null,
+          events: data.events || [],
+          createdAt:
+            data.paymentRequest?.created_at ||
+            data.invoice?.created_at ||
+            invoice.created_at,
+        },
+      }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load lifecycle history";
+      setLifecycleById((prev) => ({
+        ...prev,
+        [invoice.id]: { loading: false, error: message, events: [], createdAt: invoice.created_at },
+      }));
+      toast(message, "error");
+    }
+  };
 
   const fetchDashboardData = async () => {
     if (!supabase || !user?.id) throw new Error("No user");
@@ -351,62 +407,126 @@ export default function Dashboard() {
             </div>
             <div className="divide-y divide-white/5">
               {recentInvoices.length > 0 ? (
-                recentInvoices.map((invoice) => (
-                  <div
-                    key={invoice.id}
-                    className="p-8 flex items-center justify-between group hover:bg-white/[0.02] transition-all"
-                  >
-                    <div className="flex items-center gap-6">
-                      <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/20 border border-white/5 group-hover:bg-primary/20 group-hover:text-primary group-hover:border-primary/20 transition-all">
-                        <FileText className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <p className="text-base font-black text-white tracking-tight">
-                          {invoice.kind === "invoice" ? "#" : ""}
-                          {invoice.invoice_number}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest opacity-40">
-                          {invoice.kind === "payment_link" ? "Payment link" : "Invoice"} · {new Date(invoice.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right flex items-center gap-8">
-                      <div className="hidden md:block space-y-1">
-                        <p className="text-sm font-black text-white tracking-tighter">
-                          {invoice.total} {invoice.token}
-                        </p>
-                        {getStatusBadge(invoice.status)}
-                      </div>
-                      {!isDemo && (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              if (invoice.payment_id) {
-                                const payLink = `${window.location.origin}/pay/${invoice.payment_id}`;
-                                navigator.clipboard.writeText(payLink);
-                                toast("Payment link copied to clipboard", "success");
-                              } else {
-                                toast("No payment link is stored for this invoice.", "info");
-                              }
-                            }}
-                            className="p-3 rounded-xl bg-white/5 text-white/20 hover:text-primary hover:bg-primary/10 transition-all cursor-pointer"
-                            title="Copy payment link"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
-                          {invoice.payment_id && (
-                            <Link
-                              href={`/pay/${invoice.payment_id}`}
-                              className="p-3 rounded-xl bg-white/5 text-white/20 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
-                            >
-                              <ArrowUpRight className="w-4 h-4" />
-                            </Link>
+                recentInvoices.map((invoice) => {
+                  const isExpanded = expandedId === invoice.id;
+                  const lifecycle = lifecycleById[invoice.id];
+                  const canExpand = !!invoice.payment_id && !isDemo;
+                  return (
+                    <div key={invoice.id} className="group">
+                      <div className="p-8 flex items-center justify-between hover:bg-white/[0.02] transition-all">
+                        <div className="flex items-center gap-6">
+                          <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/20 border border-white/5 group-hover:bg-primary/20 group-hover:text-primary group-hover:border-primary/20 transition-all">
+                            <FileText className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <p className="text-base font-black text-white tracking-tight">
+                              {invoice.kind === "invoice" ? "#" : ""}
+                              {invoice.invoice_number}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest opacity-40">
+                              {invoice.kind === "payment_link" ? "Payment link" : "Invoice"} · {new Date(invoice.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right flex items-center gap-8">
+                          <div className="hidden md:block space-y-1">
+                            <p className="text-sm font-black text-white tracking-tighter">
+                              {invoice.total} {invoice.token}
+                            </p>
+                            {getStatusBadge(invoice.status)}
+                          </div>
+                          {!isDemo && (
+                            <div className="flex gap-2">
+                              {canExpand && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleLifecycle(invoice)}
+                                  aria-expanded={isExpanded}
+                                  aria-controls={`lifecycle-${invoice.id}`}
+                                  title={isExpanded ? "Hide settlement history" : "Show settlement history"}
+                                  className={`p-3 rounded-xl bg-white/5 transition-all cursor-pointer ${
+                                    isExpanded
+                                      ? "text-primary bg-primary/10"
+                                      : "text-white/20 hover:text-primary hover:bg-primary/10"
+                                  }`}
+                                >
+                                  <motion.span
+                                    animate={{ rotate: isExpanded ? 180 : 0 }}
+                                    transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                                    className="inline-flex"
+                                  >
+                                    <ChevronDown className="w-4 h-4" />
+                                  </motion.span>
+                                </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  if (invoice.payment_id) {
+                                    const payLink = `${window.location.origin}/pay/${invoice.payment_id}`;
+                                    navigator.clipboard.writeText(payLink);
+                                    toast("Payment link copied to clipboard", "success");
+                                  } else {
+                                    toast("No payment link is stored for this invoice.", "info");
+                                  }
+                                }}
+                                className="p-3 rounded-xl bg-white/5 text-white/20 hover:text-primary hover:bg-primary/10 transition-all cursor-pointer"
+                                title="Copy payment link"
+                              >
+                                <Copy className="w-4 h-4" />
+                              </button>
+                              {invoice.payment_id && (
+                                <Link
+                                  href={`/pay/${invoice.payment_id}`}
+                                  className="p-3 rounded-xl bg-white/5 text-white/20 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                                >
+                                  <ArrowUpRight className="w-4 h-4" />
+                                </Link>
+                              )}
+                            </div>
                           )}
                         </div>
-                      )}
+                      </div>
+                      <AnimatePresence initial={false}>
+                        {isExpanded && (
+                          <motion.div
+                            id={`lifecycle-${invoice.id}`}
+                            key="lifecycle"
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ type: "spring", stiffness: 220, damping: 28 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="px-8 pb-8">
+                              {lifecycle?.loading && (
+                                <div className="flex items-center gap-3 p-6 rounded-2xl bg-white/[0.02] border border-white/5">
+                                  <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-white/40">
+                                    Loading settlement history…
+                                  </span>
+                                </div>
+                              )}
+                              {lifecycle?.error && !lifecycle.loading && (
+                                <div className="flex items-center gap-3 p-6 rounded-2xl bg-red-500/5 border border-red-500/20">
+                                  <AlertCircle className="w-4 h-4 text-red-400" />
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-red-400">
+                                    {lifecycle.error}
+                                  </span>
+                                </div>
+                              )}
+                              {lifecycle && !lifecycle.loading && !lifecycle.error && (
+                                <PaymentTimeline
+                                  events={lifecycle.events}
+                                  createdAt={lifecycle.createdAt}
+                                />
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="p-32 text-center">
                   <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6 border border-white/5 grayscale opacity-50">
