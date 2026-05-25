@@ -18,6 +18,18 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      {
+        source: '/pitch-deck',
+        destination: '/pitch-deck.html',
+      },
+      {
+        source: '/pitch',
+        destination: '/pitch-deck.html',
+      },
+    ];
+  },
 };
 
 export default nextConfig;
