@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS public.payment_requests (
   amount DECIMAL NOT NULL,
   token TEXT NOT NULL DEFAULT 'SOL',
   memo TEXT,
-  fee_bps INTEGER NOT NULL DEFAULT 10,
+  fee_bps INTEGER NOT NULL DEFAULT 50,
   payment_status TEXT NOT NULL DEFAULT 'sent',
   signature TEXT,
   confirmation_status TEXT,
@@ -154,4 +154,9 @@ CREATE INDEX IF NOT EXISTS idx_payment_events_request_id ON public.payment_event
 -- Idempotency guard: prevents duplicate lifecycle events on retry. See migrations/001_payment_events_unique.sql for the rationale.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_events_unique_per_signature
   ON public.payment_events (payment_request_id, signature, event_type)
+  WHERE signature IS NOT NULL;
+
+-- Signature uniqueness: prevents the same on-chain tx from satisfying multiple payment requests.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_requests_unique_signature
+  ON public.payment_requests (signature)
   WHERE signature IS NOT NULL;

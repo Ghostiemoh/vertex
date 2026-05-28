@@ -546,6 +546,23 @@ export async function POST(
     });
   }
 
+  // --- Signature reuse guard ---
+  // Reject signatures that have already settled a *different* payment request.
+  if (supabaseAdmin) {
+    const { data: claimedBy } = await supabaseAdmin
+      .from("payment_requests")
+      .select("id")
+      .eq("signature", body.signature)
+      .neq("id", id)
+      .maybeSingle();
+    if (claimedBy) {
+      return NextResponse.json(
+        { error: "Transaction signature already used by another payment request." },
+        { status: 409 }
+      );
+    }
+  }
+
   // Set payment_submitted before verification so the dashboard shows in-flight state.
   // Uses .neq filters to avoid downgrading an already-confirmed/finalized payment.
   if (supabaseAdmin && paymentRequest) {

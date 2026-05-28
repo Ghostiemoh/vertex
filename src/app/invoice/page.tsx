@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import Image from "next/image";
-import { Download, Send, Plus, Trash2, User, Building, Calendar, Hash, Loader2, ShieldCheck, AlertCircle, Share2 } from "lucide-react";
+import { Download, Plus, Trash2, User, Building, Calendar, Hash, Loader2, ShieldCheck, AlertCircle, Share2 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { encodePaymentRequest, generateShortPaymentId, type PaymentToken } from "@/lib/payment-utils";
@@ -57,7 +57,7 @@ export default function InvoicePage() {
   const [items, setItems] = useState<InvoiceItem[]>([{ id: "1", description: "", period: "", qty: 1, rate: 0 }]);
   const [token, setToken] = useState<PaymentToken>("SOL");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isSending, setIsSending] = useState(false);
+
   const [isMilestone, setIsMilestone] = useState(false);
   const [manualWallet, setManualWallet] = useState("");
   const [solPrice, setSolPrice] = useState<number | null>(null);
@@ -516,54 +516,6 @@ export default function InvoicePage() {
     }
   };
 
-  /* ── Auto Dispatch Action ── */
-  const sendToClient = async () => {
-    if (!clientEmail) {
-      toast("Please provide a client email address.", "error");
-      return;
-    }
-    
-    try {
-      setIsSending(true);
-      toast("Generating and sending invoice...", "info");
-      
-      const { doc, paymentLink } = await buildPdfDoc();
-      const pdfArrayBuffer = doc.output('arraybuffer');
-      const pdfBufferBase64 = Buffer.from(pdfArrayBuffer).toString('base64');
-      
-      const res = await fetch("/api/send-invoice", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clientEmail,
-          pdfBase64: pdfBufferBase64,
-          invoiceNumber,
-          vendorName,
-          clientName,
-          total,
-          token,
-          paymentLink,
-          notes
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
-      toast(`Invoice emailed to ${clientEmail} successfully!`, "success");
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to send email.";
-      logVertexEvent(
-        "invoice_email_send_failed",
-        { reason: message, clientEmail, invoiceNumber },
-        "error"
-      );
-      toast(`Email send failed: ${message}`, "error");
-    } finally {
-      setIsSending(false);
-    }
-  };
-
   /* ── Social Dispatch Action ── */
   const copySocialLink = async () => {
     try {
@@ -882,29 +834,18 @@ ${paymentLink}`;
                 </div>
               </label>
 
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={sendToClient}
-                  disabled={isSending || isGenerating || !clientEmail || total <= 0 || !effectiveWallet}
-                  className="vertex-btn w-full !h-16"
-                >
-                  {isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                  Dispatch Email
-                </button>
-
-                <button
-                  onClick={copySocialLink}
-                  disabled={isGenerating || isSending || total <= 0 || !effectiveWallet}
-                  className="vertex-btn-outline w-full !h-16"
-                >
-                  <Share2 className="w-5 h-5" />
-                  Relay Link
-                </button>
-              </div>
+              <button
+                onClick={copySocialLink}
+                disabled={isGenerating || total <= 0 || !effectiveWallet}
+                className="vertex-btn w-full !h-16"
+              >
+                <Share2 className="w-5 h-5" />
+                Relay Link
+              </button>
 
               <button
                 onClick={exportPDF}
-                disabled={isGenerating || isSending || total <= 0 || !effectiveWallet}
+                disabled={isGenerating || total <= 0 || !effectiveWallet}
                 className="w-full py-4 text-white/40 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-white/40 flex items-center justify-center gap-2"
               >
                 {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}

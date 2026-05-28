@@ -21,9 +21,9 @@ import {
   calculatePaymentBreakdown,
   decodePaymentRequest,
   getPaymentUrl,
-  getTokenDecimals,
   getTokenMint,
   paymentRequestFromRow,
+  toAtomicUnits,
   type PaymentRequest,
   type PaymentToken,
 } from "@/lib/payment-utils";
@@ -166,7 +166,7 @@ export async function POST(
         SystemProgram.transfer({
           fromPubkey: payerPubkey,
           toPubkey: recipientPubkey,
-          lamports: Math.round(request.amount * 1_000_000_000),
+          lamports: toAtomicUnits(request.amount, "SOL"),
         })
       );
 
@@ -175,14 +175,13 @@ export async function POST(
           SystemProgram.transfer({
             fromPubkey: payerPubkey,
             toPubkey: treasuryPubkey,
-            lamports: Math.round(breakdown.platformFee * 1_000_000_000),
+            lamports: toAtomicUnits(breakdown.platformFee, "SOL"),
           })
         );
       }
     } else {
       const tokenType = request.token as Exclude<PaymentToken, "SOL">;
       const mintPubkey = getTokenMint(tokenType, request.network === "devnet" ? "devnet" : "mainnet");
-      const decimals = getTokenDecimals(request.token);
       const senderAta = await getAssociatedTokenAddress(mintPubkey, payerPubkey);
       const recipientAta = await getAssociatedTokenAddress(mintPubkey, recipientPubkey);
 
@@ -206,7 +205,7 @@ export async function POST(
           senderAta,
           recipientAta,
           payerPubkey,
-          Math.round(request.amount * 10 ** decimals)
+          toAtomicUnits(request.amount, tokenType)
         )
       );
 
@@ -232,7 +231,7 @@ export async function POST(
             senderAta,
             treasuryAta,
             payerPubkey,
-            Math.round(breakdown.platformFee * 10 ** decimals)
+            toAtomicUnits(breakdown.platformFee, tokenType)
           )
         );
       }
